@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Tabs } from "expo-router";
 
@@ -6,8 +7,21 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarActiveTintColor: "#B91C1C",
+        tabBarInactiveTintColor: "#6B7280",
+        tabBarStyle: {
+          backgroundColor: "#FFFFFF",
+        },
       }}
     >
+      <Tabs.Screen
+        name="explore"
+        options={{
+          title: "Explore",
+          href: null,
+        }}
+      />
+
       <Tabs.Screen
         name="dashboard"
         options={{
@@ -18,7 +32,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="camera"
         options={{
-          title: "Camera",
+          title: "Evidence",
         }}
       />
 
@@ -32,7 +46,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="sensor"
         options={{
-          title: "Sensor",
+          title: "Sensors",
         }}
       />
     </Tabs>

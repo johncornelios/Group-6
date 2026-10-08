@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -12,54 +13,178 @@ import * as ImagePicker from "expo-image-picker";
 
 export default function CameraScreen() {
   const [photo, setPhoto] = useState<string | null>(null);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [error, setError] = useState("");
+
+  const videoRef = useRef<any>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach((track) => {
+      track.stop();
+    });
+    streamRef.current = null;
+    setCameraOpen(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      streamRef.current?.getTracks().forEach((track) => {
+        track.stop();
+      });
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      Platform.OS === "web" &&
+      cameraOpen &&
+      videoRef.current &&
+      streamRef.current
+    ) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [cameraOpen]);
 
   const openCamera = async () => {
-    try {
-      const permission =
-        await ImagePicker.requestCameraPermissionsAsync();
+    setError("");
 
-      if (!permission.granted) {
-        Alert.alert(
-          "Permission Required",
-          "Please allow camera access."
+    if (Platform.OS === "web") {
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setError(
+            "Camera is unavailable. Use Chrome on localhost or HTTPS."
+          );
+          return;
+        }
+
+        const stream =
+          await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+
+        streamRef.current = stream;
+        setCameraOpen(true);
+      } catch (err) {
+        setError(
+          "Cannot access camera. Check Chrome camera permissions."
         );
-        return;
       }
+    } else {
+      try {
+        const permission =
+          await ImagePicker.requestCameraPermissionsAsync();
 
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ["images"],
-        allowsEditing: false,
-        quality: 0.8,
-      });
+        if (!permission.granted) {
+          Alert.alert(
+            "Permission Required",
+            "Please allow camera access."
+          );
+          return;
+        }
 
-      if (!result.canceled && result.assets.length > 0) {
-        setPhoto(result.assets[0].uri);
-      }
-    } catch (error) {
-      if (Platform.OS === "web") {
-        window.alert(
-          "Unable to open camera. Check browser permissions or try Expo Go on your phone."
-        );
-      } else {
+        const result =
+          await ImagePicker.launchCameraAsync({
+            mediaTypes: ["images"],
+            quality: 0.8,
+          });
+
+        if (!result.canceled && result.assets.length > 0) {
+          setPhoto(result.assets[0].uri);
+        }
+      } catch {
         Alert.alert("Error", "Unable to open camera.");
       }
     }
+  };
+
+  const takePhoto = () => {
+    if (!videoRef.current) return;
+
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    if (!canvas.width || !canvas.height) {
+      setError("Camera is still loading. Please try again.");
+      return;
+    }
+
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    context.drawImage(
+      video,
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    const image = canvas.toDataURL("image/jpeg", 0.8);
+    setPhoto(image);
+    stopCamera();
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Camera Screen</Text>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={openCamera}
-      >
-        <Text style={styles.buttonText}>
-          Capture Evidence
-        </Text>
-      </TouchableOpacity>
+      {!cameraOpen && (
+        <TouchableOpacity
+          style={styles.button}
+          onPress={openCamera}
+        >
+          <Text style={styles.buttonText}>
+            Capture Evidence
+          </Text>
+        </TouchableOpacity>
+      )}
 
-      {photo && (
+      {Platform.OS === "web" && cameraOpen && (
+        <View style={styles.cameraContainer}>
+          {React.createElement("video", {
+            ref: videoRef,
+            autoPlay: true,
+            playsInline: true,
+            muted: true,
+            style: {
+              width: 320,
+              maxWidth: "100%",
+              borderRadius: 10,
+              backgroundColor: "#000",
+            },
+          })}
+
+          <TouchableOpacity
+            style={[styles.button, { marginTop: 15 }]}
+            onPress={takePhoto}
+          >
+            <Text style={styles.buttonText}>
+              Take Photo
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.button, styles.cancelButton]}
+            onPress={stopCamera}
+          >
+            <Text style={styles.buttonText}>
+              Cancel
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!!error && (
+        <Text style={styles.errorText}>{error}</Text>
+      )}
+
+      {photo && !cameraOpen && (
         <View style={styles.previewContainer}>
           <Text style={styles.previewTitle}>
             Captured Evidence
@@ -97,11 +222,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
+    alignItems: "center",
   },
   buttonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
+  },
+  cameraContainer: {
+    marginTop: 20,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: "#6B7280",
+    marginTop: 10,
   },
   previewContainer: {
     marginTop: 25,
@@ -114,12 +248,17 @@ const styles = StyleSheet.create({
   },
   image: {
     width: 280,
-    height: 250,
+    height: 220,
     borderRadius: 10,
   },
   successText: {
     marginTop: 10,
     color: "green",
     fontSize: 14,
+  },
+  errorText: {
+    marginTop: 15,
+    color: "red",
+    textAlign: "center",
   },
 });

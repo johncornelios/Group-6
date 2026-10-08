@@ -12,31 +12,59 @@ import {
 } from "react-native";
 
 import { router } from "expo-router";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function HomeScreen() {
   const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   async function continueToApp() {
     const cleanName = name.trim();
 
     if (!cleanName) {
-      Alert.alert(
-        "Name Required",
-        "Please enter your name before continuing."
-      );
+      const message =
+        "Please enter your name before continuing.";
+
+      setError(message);
+
+      if (Platform.OS !== "web") {
+        Alert.alert("Name Required", message);
+      }
 
       return;
     }
 
-    await saveUser({
-      name: cleanName,
-    });
+    if (loading) return;
 
-    router.replace({
-      pathname: "/explore",
-      params: { username: cleanName },
-    });
+    setLoading(true);
+    setError("");
+
+    try {
+      await AsyncStorage.setItem(
+        "community_user",
+        JSON.stringify({ name: cleanName })
+      );
+
+      // Continue to Explore Screen
+      router.replace({
+        pathname: "/explore",
+        params: { username: cleanName },
+      });
+    } catch (err) {
+      const message =
+        "Unable to save your name. Please try again.";
+
+      setError(message);
+
+      if (Platform.OS !== "web") {
+        Alert.alert("Error", message);
+      }
+
+      console.error("Save user error:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -50,9 +78,7 @@ export default function HomeScreen() {
     >
       <View style={styles.content}>
         <View style={styles.iconCircle}>
-          <Text style={styles.icon}>
-            🚨
-          </Text>
+          <Text style={styles.icon}>🚨</Text>
         </View>
 
         <Text style={styles.title}>
@@ -72,18 +98,29 @@ export default function HomeScreen() {
 
           <TextInput
             value={name}
-            onChangeText={setName}
+            onChangeText={(text) => {
+              setName(text);
+              setError("");
+            }}
             placeholder="Enter your name"
             placeholderTextColor="#9CA3AF"
             style={styles.input}
+            autoCapitalize="words"
           />
+
+          {!!error && (
+            <Text style={styles.errorText}>
+              {error}
+            </Text>
+          )}
 
           <TouchableOpacity
             style={styles.button}
             onPress={continueToApp}
+            disabled={loading}
           >
             <Text style={styles.buttonText}>
-              Continue
+              {loading ? "Please wait..." : "Continue"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -173,6 +210,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
+  errorText: {
+    color: "#DC2626",
+    fontSize: 13,
+    marginTop: 8,
+  },
+
   disclaimer: {
     textAlign: "center",
     color: "#9CA3AF",
@@ -181,6 +224,6 @@ const styles = StyleSheet.create({
   },
 });
 
-async function saveUser(arg0: { name: string }) {
-  console.log("User saved:", arg0.name);
+function saveUser(user: { name: string }) {
+  console.log("User:", user.name);
 }
