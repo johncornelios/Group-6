@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { EmergencyAlert, EmergencyContact } from '../types/emergency';
+
+type EmergencyAlert = any;
+type EmergencyContact = any;
 
 const STORAGE_KEYS = {
   CONTACTS: '@community_contacts',
