@@ -1,41 +1,53 @@
 import React from "react";
 import {
-  TouchableOpacity,
-  Text,
+  Alert,
   StyleSheet,
-  View,
+  Text,
+  TouchableOpacity,
 } from "react-native";
 
-type Props = {
-  onPress: () => void;
-  active?: boolean;
-};
+import { createEmergency } from "../services/emergencyService";
 
-export default function EmergencyButton({
-  onPress,
-  active = false,
-}: Props) {
+export default function EmergencyButton() {
+  async function handleEmergency() {
+    Alert.alert(
+      "Emergency Alert",
+      "Are you sure you want to send an emergency alert?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Send Alert",
+          style: "destructive",
+          onPress: async () => {
+            await createEmergency({ type: "general" });
+
+            Alert.alert(
+              "Alert Recorded",
+              "Your emergency information has been saved."
+            );
+          },
+        },
+      ]
+    );
+  }
+
   return (
     <TouchableOpacity
-      style={[
-        styles.button,
-        active && styles.activeButton,
-      ]}
-      onPress={onPress}
-      activeOpacity={0.85}
+      style={styles.button}
+      onPress={handleEmergency}
+      activeOpacity={0.8}
     >
-      <View style={styles.circle}>
-        <Text style={styles.icon}>🚨</Text>
-      </View>
+      <Text style={styles.icon}>🚨</Text>
 
       <Text style={styles.title}>
-        {active ? "HELP REQUESTED" : "I'M IN AN EMERGENCY"}
+        EMERGENCY
       </Text>
 
       <Text style={styles.subtitle}>
-        {active
-          ? "Tap again when you are safe"
-          : "Tap here if you need help"}
+        Tap to request help
       </Text>
     </TouchableOpacity>
   );
@@ -44,39 +56,27 @@ export default function EmergencyButton({
 const styles = StyleSheet.create({
   button: {
     backgroundColor: "#B91C1C",
-    borderRadius: 22,
-    padding: 24,
+    borderRadius: 18,
+    padding: 25,
     alignItems: "center",
-    marginBottom: 18,
-  },
-
-  activeButton: {
-    backgroundColor: "#7F1D1D",
-  },
-
-  circle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: "#FFFFFF",
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 12,
+    marginTop: 20,
+    elevation: 5,
   },
 
   icon: {
-    fontSize: 34,
+    fontSize: 40,
   },
 
   title: {
     color: "#FFFFFF",
-    fontSize: 19,
+    fontSize: 23,
     fontWeight: "bold",
+    marginTop: 5,
   },
 
   subtitle: {
     color: "#FECACA",
-    marginTop: 6,
-    textAlign: "center",
+    fontSize: 13,
+    marginTop: 4,
   },
 });

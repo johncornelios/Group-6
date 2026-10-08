@@ -1,48 +1,33 @@
 import React from "react";
 import {
-  View,
-  Text,
   StyleSheet,
+  Text,
   TouchableOpacity,
+  View,
 } from "react-native";
 
-type Props = {
-  name: string;
-  phone: string;
-  relationship: string;
-  onCall: () => void;
-};
-
-export default function EmergencyContact({
-  name,
-  phone,
-  relationship,
-  onCall,
-}: Props) {
+export default function EmergencyContact() {
   return (
     <View style={styles.card}>
-      <View style={styles.avatar}>
-        <Text style={styles.avatarText}>👤</Text>
-      </View>
+      <Text style={styles.icon}>👤</Text>
 
-      <View style={{ flex: 1 }}>
-        <Text style={styles.name}>{name}</Text>
-
-        <Text style={styles.relationship}>
-          {relationship}
+      <View style={styles.info}>
+        <Text style={styles.label}>
+          TRUSTED CONTACT
         </Text>
 
-        <Text style={styles.phone}>
-          {phone}
+        <Text style={styles.title}>
+          No contact added
+        </Text>
+
+        <Text style={styles.description}>
+          Add a trusted person for emergencies.
         </Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.callButton}
-        onPress={onCall}
-      >
-        <Text style={styles.callText}>
-          CALL
+      <TouchableOpacity style={styles.button}>
+        <Text style={styles.buttonText}>
+          Add
         </Text>
       </TouchableOpacity>
     </View>
@@ -52,52 +37,51 @@ export default function EmergencyContact({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 16,
+    borderRadius: 15,
+    padding: 17,
+    marginTop: 15,
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 15,
+    elevation: 2,
   },
 
-  avatar: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "#FEE2E2",
-    justifyContent: "center",
-    alignItems: "center",
+  icon: {
+    fontSize: 28,
     marginRight: 12,
   },
 
-  avatarText: {
-    fontSize: 22,
+  info: {
+    flex: 1,
   },
 
-  name: {
-    color: "#111827",
-    fontSize: 16,
+  label: {
+    fontSize: 10,
     fontWeight: "bold",
+    color: "#9CA3AF",
   },
 
-  relationship: {
-    color: "#6B7280",
-    marginTop: 2,
-  },
-
-  phone: {
-    color: "#374151",
+  title: {
+    fontSize: 15,
+    fontWeight: "bold",
+    color: "#111827",
     marginTop: 3,
   },
 
-  callButton: {
-    backgroundColor: "#16A34A",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
+  description: {
+    fontSize: 11,
+    color: "#6B7280",
+    marginTop: 3,
   },
 
-  callText: {
-    color: "#FFFFFF",
+  button: {
+    backgroundColor: "#FEE2E2",
+    borderRadius: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 8,
+  },
+
+  buttonText: {
+    color: "#B91C1C",
     fontWeight: "bold",
   },
 });

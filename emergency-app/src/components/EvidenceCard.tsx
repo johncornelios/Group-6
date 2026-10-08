@@ -1,70 +1,55 @@
 import React from "react";
 import {
-  View,
-  Text,
-  Image,
   StyleSheet,
+  Text,
+  TouchableOpacity,
 } from "react-native";
+import { router } from "expo-router";
 
-type Props = {
-  imageUri?: string | null;
-};
-
-export default function EvidenceCard({
-  imageUri,
-}: Props) {
+export default function EvidenceCard() {
   return (
-    <View style={styles.card}>
+    <TouchableOpacity
+      style={styles.card}
+      onPress={() => router.push("/camera" as any)}
+    >
+      <Text style={styles.icon}>📷</Text>
+
       <Text style={styles.title}>
-        📷 PHOTO EVIDENCE
+        Emergency Evidence
       </Text>
 
-      {imageUri ? (
-        <Image
-          source={{ uri: imageUri }}
-          style={styles.image}
-        />
-      ) : (
-        <View style={styles.empty}>
-          <Text style={styles.emptyText}>
-            No photo saved yet.
-          </Text>
-        </View>
-      )}
-    </View>
+      <Text style={styles.description}>
+        Capture photos or videos that may help document
+        an emergency.
+      </Text>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 16,
-    marginBottom: 15,
+    borderRadius: 15,
+    padding: 18,
+    marginTop: 15,
+    elevation: 2,
+  },
+
+  icon: {
+    fontSize: 30,
   },
 
   title: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "bold",
-    marginBottom: 12,
     color: "#111827",
+    marginTop: 7,
   },
 
-  image: {
-    width: "100%",
-    height: 180,
-    borderRadius: 12,
-  },
-
-  empty: {
-    height: 100,
-    backgroundColor: "#F3F4F6",
-    borderRadius: 12,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  emptyText: {
+  description: {
+    fontSize: 12,
     color: "#6B7280",
+    marginTop: 4,
+    lineHeight: 18,
   },
 });
