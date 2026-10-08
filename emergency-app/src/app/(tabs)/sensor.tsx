@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
 
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,8 @@ import {
   Alert,
   ScrollView,
   Platform,
+  AppState,
 } from "react-native";
-
 import { Accelerometer } from "expo-sensors";
 
 type SensorData = {
@@ -18,13 +18,14 @@ type SensorData = {
   z: number;
 };
 
-export default function SensorScreen() {
-  const [data, setData] = useState<SensorData>({
-    x: 0,
-    y: 0,
-    z: 0,
-  });
+const EMPTY_DATA: SensorData = {
+  x: 0,
+  y: 0,
+  z: 0,
+};
 
+export default function SensorScreen() {
+  const [data, setData] = useState<SensorData>(EMPTY_DATA);
   const [movement, setMovement] = useState("Not Monitoring");
   const [monitoring, setMonitoring] = useState(false);
   const [sensorAvailable, setSensorAvailable] = useState(true);
@@ -32,10 +33,17 @@ export default function SensorScreen() {
   const [lastImpact, setLastImpact] = useState("None");
   const [acceleration, setAcceleration] = useState(0);
 
+  const subscriptionRef = useRef<ReturnType<
+    typeof Accelerometer.addListener
+  > | null>(null);
+
+  const monitoringRef = useRef(false);
   const previousMagnitude = useRef<number | null>(null);
   const lastImpactTime = useRef(0);
   const movementRef = useRef("Not Monitoring");
+  const startingRef = useRef(false);
 
+  // Check if the device supports motion sensors
   useEffect(() => {
     let active = true;
 
@@ -53,85 +61,56 @@ export default function SensorScreen() {
       }
     }
 
-    checkSensor();
+    if (Platform.OS !== "web") {
+      checkSensor();
+    } else {
+      setSensorAvailable(false);
+    }
 
     return () => {
       active = false;
     };
   }, []);
 
-  useEffect(() => {
-  if (!monitoring || Platform.OS === "web") {
-      previousMagnitude.current = null;
-      movementRef.current = "Not Monitoring";
-      setMovement("Not Monitoring");
-      setAcceleration(0);
+  // Remove the sensor listener
+  function removeSubscription() {
+    if (subscriptionRef.current) {
+      subscriptionRef.current.remove();
+      subscriptionRef.current = null;
+    }
+  }
+
+  // Stop monitoring completely
+  function stopMonitoring() {
+    monitoringRef.current = false;
+    startingRef.current = false;
+
+    removeSubscription();
+
+    setMonitoring(false);
+    setMovement("Not Monitoring");
+    setAcceleration(0);
+    setData({ x: 0, y: 0, z: 0 });
+
+    previousMagnitude.current = null;
+    movementRef.current = "Not Monitoring";
+  }
+
+  // Start monitoring
+  async function startMonitoring() {
+    if (monitoringRef.current || startingRef.current) {
       return;
     }
 
-    Accelerometer.setUpdateInterval(100);
-
-    const subscription = Accelerometer.addListener((value) => {
-      setData(value);
-
-      // Calculate total acceleration magnitude
-      const magnitude = Math.sqrt(
-        value.x * value.x +
-        value.y * value.y +
-        value.z * value.z
-      );
-
-      // Estimate sudden changes in acceleration
-      const previous = previousMagnitude.current;
-      const change =
-        previous === null
-          ? 0
-          : Math.abs(magnitude - previous);
-
-      previousMagnitude.current = magnitude;
-      setAcceleration(change);
-
-      let newMovement = "Normal";
-
-      if (change > 1.5 || magnitude > 3) {
-        newMovement = "Sudden Impact";
-      } else if (change > 0.5) {
-        newMovement = "High Movement";
-      } else if (change > 0.15) {
-        newMovement = "Movement Detected";
-      }
-
-      if (newMovement !== movementRef.current) {
-        movementRef.current = newMovement;
-        setMovement(newMovement);
-      }
-
-      // Avoid counting the same impact repeatedly
-      const now = Date.now();
-
-      if (
-        newMovement === "Sudden Impact" &&
-        now - lastImpactTime.current > 3000
-      ) {
-        lastImpactTime.current = now;
-        setImpactCount((count) => count + 1);
-        setLastImpact(new Date().toLocaleTimeString());
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [monitoring]);
-
-  async function toggleMonitoring() {
     if (Platform.OS === "web") {
-  Alert.alert(
-    "Sensor Unavailable",
-    "Please use the mobile app to monitor device movement."
-  );
-  return;
-}
+      Alert.alert(
+        "Sensor Unavailable",
+        "Please use Expo Go on your phone."
+      );
+      return;
+    }
+
+    startingRef.current = true;
 
     try {
       const available = await Accelerometer.isAvailableAsync();
@@ -145,28 +124,135 @@ export default function SensorScreen() {
         return;
       }
 
+      if (!startingRef.current) return;
+
+      removeSubscription();
+
       previousMagnitude.current = null;
+      movementRef.current = "Normal";
       lastImpactTime.current = 0;
-      setSensorAvailable(true);
-      setMovement("Normal");
+
+      Accelerometer.setUpdateInterval(100);
+
+      monitoringRef.current = true;
       setMonitoring(true);
-    } catch {
+      setMovement("Normal");
+      setSensorAvailable(true);
+
+      const subscription = Accelerometer.addListener((value) => {
+        // Prevent updates after monitoring stops
+        if (!monitoringRef.current) return;
+
+        setData({
+          x: value.x,
+          y: value.y,
+          z: value.z,
+        });
+
+        // Calculate acceleration magnitude
+        const magnitude = Math.sqrt(
+          value.x * value.x +
+          value.y * value.y +
+          value.z * value.z
+        );
+
+        const previous = previousMagnitude.current;
+
+        const change =
+          previous === null
+            ? 0
+            : Math.abs(magnitude - previous);
+
+        previousMagnitude.current = magnitude;
+        setAcceleration(change);
+
+        let newMovement = "Normal";
+
+        if (change > 1.5 || magnitude > 3) {
+          newMovement = "Sudden Impact";
+        } else if (change > 0.5) {
+          newMovement = "High Movement";
+        } else if (change > 0.15) {
+          newMovement = "Movement Detected";
+        }
+
+        if (newMovement !== movementRef.current) {
+          movementRef.current = newMovement;
+          setMovement(newMovement);
+        }
+
+        // Count sudden impacts with a 3-second cooldown
+        const now = Date.now();
+
+        if (
+          newMovement === "Sudden Impact" &&
+          now - lastImpactTime.current > 3000
+        ) {
+          lastImpactTime.current = now;
+          setImpactCount((count) => count + 1);
+          setLastImpact(new Date().toLocaleTimeString());
+        }
+      });
+
+      subscriptionRef.current = subscription;
+    } catch (error) {
+      console.error("Sensor error:", error);
+      stopMonitoring();
+
       Alert.alert(
         "Sensor Error",
         "Unable to start motion monitoring."
       );
+    } finally {
+      startingRef.current = false;
     }
   }
 
+  // Toggle monitoring on and off
+  function toggleMonitoring() {
+    if (monitoringRef.current || startingRef.current) {
+      stopMonitoring();
+    } else {
+      startMonitoring();
+    }
+  }
+
+  // Stop monitoring when the screen is removed
+  useEffect(() => {
+    return () => {
+      monitoringRef.current = false;
+      startingRef.current = false;
+      removeSubscription();
+    };
+  }, []);
+
+  // Stop monitoring when the app goes into background
+  useEffect(() => {
+    const listener = AppState.addEventListener(
+      "change",
+      (state) => {
+        if (state !== "active" && monitoringRef.current) {
+          stopMonitoring();
+        }
+      }
+    );
+
+    return () => listener.remove();
+  }, []);
+
+  // Reset impact records
   function resetRecords() {
     setImpactCount(0);
     setLastImpact("None");
+    lastImpactTime.current = 0;
+
     Alert.alert(
       "Records Reset",
       "Motion impact records have been cleared."
     );
   }
 
+  // Movement status color
   function getStatusColor() {
     if (!monitoring) return "#6B7280";
 
