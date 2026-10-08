@@ -1,60 +1,38 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-type EmergencyAlert = any;
-type EmergencyContact = any;
+const EMERGENCY_KEY = "emergencyInformation";
+const PHOTO_KEY = "emergencyEvidence";
+const STATUS_KEY = "emergencyStatus";
 
-const STORAGE_KEYS = {
-  CONTACTS: '@community_contacts',
-  ACTIVE_ALERT: '@community_active_alert',
-  STATUS: '@community_status',
-  LOCATION: '@community_location',
-  EVIDENCE: '@community_evidence',
-};
+export async function saveEmergencyInformation(data: any) {
+  await AsyncStorage.setItem(
+    EMERGENCY_KEY,
+    JSON.stringify(data)
+  );
+}
 
-export const emergencyStorage = {
-  async getContacts(): Promise<EmergencyContact[]> {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_KEYS.CONTACTS);
-      return data ? JSON.parse(data) : [];
-    } catch (error) {
-      console.error('Error fetching contacts:', error);
-      return [];
-    }
-  },
+export async function getEmergencyInformation() {
+  const data = await AsyncStorage.getItem(EMERGENCY_KEY);
 
-  async saveContacts(contacts: EmergencyContact[]): Promise<void> {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.CONTACTS, JSON.stringify(contacts));
-    } catch (error) {
-      console.error('Error saving contacts:', error);
-    }
-  },
+  return data ? JSON.parse(data) : null;
+}
 
-  async getActiveAlert(): Promise<EmergencyAlert | null> {
-    try {
-      const data = await AsyncStorage.getItem(STORAGE_KEYS.ACTIVE_ALERT);
-      return data ? JSON.parse(data) : null;
-    } catch (error) {
-      console.error('Error fetching active alert:', error);
-      return null;
-    }
-  },
+export async function saveEvidence(uri: string) {
+  await AsyncStorage.setItem(PHOTO_KEY, uri);
+}
 
-  async setActiveAlert(alert: EmergencyAlert): Promise<void> {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEYS.ACTIVE_ALERT, JSON.stringify(alert));
-    } catch (error) {
-      console.error('Error saving active alert:', error);
-    }
-  },
+export async function getEvidence() {
+  return await AsyncStorage.getItem(PHOTO_KEY);
+}
 
-  async clearActiveAlert(): Promise<void> {
-    try {
-      await AsyncStorage.removeItem(STORAGE_KEYS.ACTIVE_ALERT);
-    } catch (error) {
-      console.error('Error clearing active alert:', error);
-    }
-  },
-};
+export async function deleteEvidence() {
+  await AsyncStorage.removeItem(PHOTO_KEY);
+}
 
-export default emergencyStorage;
+export async function saveEmergencyStatus(status: string) {
+  await AsyncStorage.setItem(STATUS_KEY, status);
+}
+
+export async function getEmergencyStatus() {
+  return await AsyncStorage.getItem(STATUS_KEY);
+}

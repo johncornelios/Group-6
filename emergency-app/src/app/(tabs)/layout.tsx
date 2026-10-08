@@ -6,23 +6,19 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#B91C1C",
-        tabBarInactiveTintColor: "#6B7280",
       }}
     >
       <Tabs.Screen
         name="dashboard"
         options={{
           title: "Dashboard",
-          tabBarLabel: "Home",
         }}
       />
 
       <Tabs.Screen
-        name={"camera" as any}
+        name="camera"
         options={{
-          title: "Evidence",
-          tabBarLabel: "Evidence",
+          title: "Camera",
         }}
       />
 
@@ -30,15 +26,13 @@ export default function TabsLayout() {
         name="location"
         options={{
           title: "Location",
-          tabBarLabel: "Location",
         }}
       />
 
       <Tabs.Screen
         name="sensor"
         options={{
-          title: "Sensors",
-          tabBarLabel: "Sensors",
+          title: "Sensor",
         }}
       />
     </Tabs>

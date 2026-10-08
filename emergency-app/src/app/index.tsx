@@ -181,6 +181,6 @@ const styles = StyleSheet.create({
   },
 });
 
-function saveUser(arg0: { name: string; }) {
-  throw new Error("Function not implemented.");
+async function saveUser(arg0: { name: string }) {
+  console.log("User saved:", arg0.name);
 }

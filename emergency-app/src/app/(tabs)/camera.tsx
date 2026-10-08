@@ -1,152 +1,125 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  Alert,
+  Platform,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
 
-const STATUS_KEY = "@community_response_status";
-const LOCATION_KEY = "@community_response_location";
-const EVIDENCE_KEY = "@community_response_evidence";
+export default function CameraScreen() {
+  const [photo, setPhoto] = useState<string | null>(null);
 
-export type EmergencyStatus =
-  | "SAFE"
-  | "HELP NEEDED";
+  const openCamera = async () => {
+    try {
+      const permission =
+        await ImagePicker.requestCameraPermissionsAsync();
 
-export interface SavedLocation {
-  text: string;
-  latitude: number;
-  longitude: number;
-  updatedAt: string;
-}
+      if (!permission.granted) {
+        Alert.alert(
+          "Permission Required",
+          "Please allow camera access."
+        );
+        return;
+      }
 
-export async function saveStatus(
-  status: EmergencyStatus
-): Promise<void> {
-  try {
-    await AsyncStorage.setItem(
-      STATUS_KEY,
-      status
-    );
-  } catch (error) {
-    console.log(
-      "Save status error:",
-      error
-    );
-  }
-}
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ["images"],
+        allowsEditing: false,
+        quality: 0.8,
+      });
 
-export async function getStatus(): Promise<
-  EmergencyStatus | null >
-{
-
-  try {
-    const status =
-      await AsyncStorage.getItem(
-        STATUS_KEY
-      );
-
-    if (
-      status === "SAFE" ||
-      status === "HELP NEEDED"
-    ) {
-      return status;
+      if (!result.canceled && result.assets.length > 0) {
+        setPhoto(result.assets[0].uri);
+      }
+    } catch (error) {
+      if (Platform.OS === "web") {
+        window.alert(
+          "Unable to open camera. Check browser permissions or try Expo Go on your phone."
+        );
+      } else {
+        Alert.alert("Error", "Unable to open camera.");
+      }
     }
+  };
 
-    return null;
-  } catch (error) {
-    console.log(
-      "Get status error:",
-      error
-    );
+  return (
+    <View style={styles.container}>
+      <Text style={styles.title}>Camera Screen</Text>
 
-    return null;
-  }
+      <TouchableOpacity
+        style={styles.button}
+        onPress={openCamera}
+      >
+        <Text style={styles.buttonText}>
+          Capture Evidence
+        </Text>
+      </TouchableOpacity>
+
+      {photo && (
+        <View style={styles.previewContainer}>
+          <Text style={styles.previewTitle}>
+            Captured Evidence
+          </Text>
+
+          <Image
+            source={{ uri: photo }}
+            style={styles.image}
+          />
+
+          <Text style={styles.successText}>
+            Photo captured successfully!
+          </Text>
+        </View>
+      )}
+    </View>
+  );
 }
 
-export async function saveLocation(
-  location: SavedLocation
-): Promise<void> {
-  try {
-    await AsyncStorage.setItem(
-      LOCATION_KEY,
-      JSON.stringify(location)
-    );
-  } catch (error) {
-    console.log(
-      "Save location error:",
-      error
-    );
-  }
-}
-
-export async function getLocation(): Promise<
-  SavedLocation | null
-> {
-
-  try {
-    const savedLocation =
-      await AsyncStorage.getItem(
-        LOCATION_KEY
-      );
-
-    if (!savedLocation) {
-      return null;
-    }
-
-    return JSON.parse(
-      savedLocation
-    ) as SavedLocation;
-  } catch (error) {
-    console.log(
-      "Get location error:",
-      error
-    );
-
-    return null;
-  }
-}
-
-export async function saveEvidence(
-  imageUri: string
-): Promise<void> {
-  try {
-    await AsyncStorage.setItem(
-      EVIDENCE_KEY,
-      imageUri
-    );
-  } catch (error) {
-    console.log(
-      "Save evidence error:",
-      error
-    );
-  }
-}
-
-export async function getEvidence(): Promise<
-  string | null >
-{
-
-  try {
-    return await AsyncStorage.getItem(
-      EVIDENCE_KEY
-    );
-  } catch (error) {
-    console.log(
-      "Get evidence error:",
-      error
-    );
-
-    return null;
-  }
-}
-
-export async function clearEmergencyData(): Promise<void> {
-  try {
-    await AsyncStorage.multiRemove([
-      STATUS_KEY,
-      LOCATION_KEY,
-      EVIDENCE_KEY,
-    ]);
-  } catch (error) {
-    console.log(
-      "Clear emergency data error:",
-      error
-    );
-  }
-}
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
+    padding: 20,
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 20,
+  },
+  button: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  previewContainer: {
+    marginTop: 25,
+    alignItems: "center",
+  },
+  previewTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 12,
+  },
+  image: {
+    width: 280,
+    height: 250,
+    borderRadius: 10,
+  },
+  successText: {
+    marginTop: 10,
+    color: "green",
+    fontSize: 14,
+  },
+});
