@@ -6,33 +6,28 @@ import {
   TouchableOpacity,
 } from "react-native";
 
-import { createEmergency } from "../services/emergencyService";
-
 export default function EmergencyButton() {
-  async function handleEmergency() {
+  const handleEmergency = () => {
     Alert.alert(
       "Emergency Alert",
-      "Are you sure you want to send an emergency alert?",
+      "Do you want to activate the emergency alert?",
       [
         {
           text: "Cancel",
           style: "cancel",
         },
         {
-          text: "Send Alert",
-          style: "destructive",
-          onPress: async () => {
-            await createEmergency({ type: "general" });
-
+          text: "Confirm",
+          onPress: () => {
             Alert.alert(
-              "Alert Recorded",
-              "Your emergency information has been saved."
+              "Emergency Activated",
+              "Your emergency alert has been activated."
             );
           },
         },
       ]
     );
-  }
+  };
 
   return (
     <TouchableOpacity
@@ -40,14 +35,8 @@ export default function EmergencyButton() {
       onPress={handleEmergency}
       activeOpacity={0.8}
     >
-      <Text style={styles.icon}>🚨</Text>
-
-      <Text style={styles.title}>
-        EMERGENCY
-      </Text>
-
-      <Text style={styles.subtitle}>
-        Tap to request help
+      <Text style={styles.buttonText}>
+        🚨 EMERGENCY SOS
       </Text>
     </TouchableOpacity>
   );
@@ -55,28 +44,18 @@ export default function EmergencyButton() {
 
 const styles = StyleSheet.create({
   button: {
-    backgroundColor: "#B91C1C",
-    borderRadius: 18,
-    padding: 25,
+    backgroundColor: "#DC2626",
+    paddingVertical: 20,
+    paddingHorizontal: 24,
+    borderRadius: 16,
     alignItems: "center",
-    marginTop: 20,
-    elevation: 5,
+    justifyContent: "center",
+    marginVertical: 12,
   },
-
-  icon: {
-    fontSize: 40,
-  },
-
-  title: {
+  buttonText: {
     color: "#FFFFFF",
-    fontSize: 23,
+    fontSize: 18,
     fontWeight: "bold",
-    marginTop: 5,
-  },
-
-  subtitle: {
-    color: "#FECACA",
-    fontSize: 13,
-    marginTop: 4,
+    letterSpacing: 1,
   },
 });
