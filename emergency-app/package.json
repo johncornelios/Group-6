@@ -16,7 +16,7 @@
     "expo-image-picker": "~57.0.20",
     "expo-linking": "~57.0.11",
     "expo-location": "~57.0.20",
-    "expo-router": "~57.0.24",
+    "expo-router": "~57.0.25",
     "expo-secure-store": "~57.0.4",
     "expo-sensors": "~57.0.3",
     "expo-sms": "~57.0.2",
