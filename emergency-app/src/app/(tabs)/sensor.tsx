@@ -1,69 +1,281 @@
-import React, { useEffect, useState } from "react";
 
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
+  Alert,
+  ScrollView,
+  Platform,
+  AppState,
 } from "react-native";
+import { Accelerometer } from "expo-sensors";
 
-import {
-  Accelerometer,
-} from "expo-sensors";
+type SensorData = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+const EMPTY_DATA: SensorData = {
+  x: 0,
+  y: 0,
+  z: 0,
+};
 
 export default function SensorScreen() {
-  const [data, setData] = useState({
-    x: 0,
-    y: 0,
-    z: 0,
-  });
+  const [data, setData] = useState<SensorData>(EMPTY_DATA);
+  const [movement, setMovement] = useState("Not Monitoring");
+  const [monitoring, setMonitoring] = useState(false);
+  const [sensorAvailable, setSensorAvailable] = useState(true);
+  const [impactCount, setImpactCount] = useState(0);
+  const [lastImpact, setLastImpact] = useState("None");
+  const [acceleration, setAcceleration] = useState(0);
 
-  const [movement, setMovement] =
-    useState("Normal");
+  const subscriptionRef = useRef<ReturnType<
+    typeof Accelerometer.addListener
+  > | null>(null);
 
-  const [monitoring, setMonitoring] =
-    useState(false);
+  const monitoringRef = useRef(false);
+  const previousMagnitude = useRef<number | null>(null);
+  const lastImpactTime = useRef(0);
+  const movementRef = useRef("Not Monitoring");
+  const startingRef = useRef(false);
 
+  // Check if the device supports motion sensors
   useEffect(() => {
-    if (!monitoring) {
+    let active = true;
+
+    async function checkSensor() {
+      try {
+        const available = await Accelerometer.isAvailableAsync();
+
+        if (active) {
+          setSensorAvailable(available);
+        }
+      } catch {
+        if (active) {
+          setSensorAvailable(false);
+        }
+      }
+    }
+
+    if (Platform.OS !== "web") {
+      checkSensor();
+    } else {
+      setSensorAvailable(false);
+    }
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Remove the sensor listener
+  function removeSubscription() {
+    if (subscriptionRef.current) {
+      subscriptionRef.current.remove();
+      subscriptionRef.current = null;
+    }
+  }
+
+  // Stop monitoring completely
+  function stopMonitoring() {
+    monitoringRef.current = false;
+    startingRef.current = false;
+
+    removeSubscription();
+
+    setMonitoring(false);
+    setMovement("Not Monitoring");
+    setAcceleration(0);
+    setData({ x: 0, y: 0, z: 0 });
+
+    previousMagnitude.current = null;
+    movementRef.current = "Not Monitoring";
+  }
+
+  // Start monitoring
+  async function startMonitoring() {
+    if (monitoringRef.current || startingRef.current) {
       return;
     }
 
-    Accelerometer.setUpdateInterval(500);
+    if (Platform.OS === "web") {
+      Alert.alert(
+        "Sensor Unavailable",
+        "Please use Expo Go on your phone."
+      );
+      return;
+    }
 
-    const subscription =
-      Accelerometer.addListener((value) => {
-        setData(value);
+    startingRef.current = true;
 
-        const totalMovement =
-          Math.abs(value.x) +
-          Math.abs(value.y) +
-          Math.abs(value.z);
+    try {
+      const available = await Accelerometer.isAvailableAsync();
 
-        if (totalMovement > 3.5) {
-          setMovement("High Movement");
-        } else if (totalMovement > 2) {
-          setMovement("Movement Detected");
-        } else {
-          setMovement("Normal");
+      if (!available) {
+        setSensorAvailable(false);
+        Alert.alert(
+          "Sensor Unavailable",
+          "This device does not support the accelerometer."
+        );
+        return;
+      }
+
+      if (!startingRef.current) return;
+
+      removeSubscription();
+
+      previousMagnitude.current = null;
+      movementRef.current = "Normal";
+      lastImpactTime.current = 0;
+
+      Accelerometer.setUpdateInterval(100);
+
+      monitoringRef.current = true;
+      setMonitoring(true);
+      setMovement("Normal");
+      setSensorAvailable(true);
+
+      const subscription = Accelerometer.addListener((value) => {
+        // Prevent updates after monitoring stops
+        if (!monitoringRef.current) return;
+
+        setData({
+          x: value.x,
+          y: value.y,
+          z: value.z,
+        });
+
+        // Calculate acceleration magnitude
+        const magnitude = Math.sqrt(
+          value.x * value.x +
+          value.y * value.y +
+          value.z * value.z
+        );
+
+        const previous = previousMagnitude.current;
+
+        const change =
+          previous === null
+            ? 0
+            : Math.abs(magnitude - previous);
+
+        previousMagnitude.current = magnitude;
+        setAcceleration(change);
+
+        let newMovement = "Normal";
+
+        if (change > 1.5 || magnitude > 3) {
+          newMovement = "Sudden Impact";
+        } else if (change > 0.5) {
+          newMovement = "High Movement";
+        } else if (change > 0.15) {
+          newMovement = "Movement Detected";
+        }
+
+        if (newMovement !== movementRef.current) {
+          movementRef.current = newMovement;
+          setMovement(newMovement);
+        }
+
+        // Count sudden impacts with a 3-second cooldown
+        const now = Date.now();
+
+        if (
+          newMovement === "Sudden Impact" &&
+          now - lastImpactTime.current > 3000
+        ) {
+          lastImpactTime.current = now;
+          setImpactCount((count) => count + 1);
+          setLastImpact(new Date().toLocaleTimeString());
         }
       });
 
+      subscriptionRef.current = subscription;
+    } catch (error) {
+      console.error("Sensor error:", error);
+      stopMonitoring();
+
+      Alert.alert(
+        "Sensor Error",
+        "Unable to start motion monitoring."
+      );
+    } finally {
+      startingRef.current = false;
+    }
+  }
+
+  // Toggle monitoring on and off
+  function toggleMonitoring() {
+    if (monitoringRef.current || startingRef.current) {
+      stopMonitoring();
+    } else {
+      startMonitoring();
+    }
+  }
+
+  // Stop monitoring when the screen is removed
+  useEffect(() => {
     return () => {
-      subscription.remove();
+      monitoringRef.current = false;
+      startingRef.current = false;
+      removeSubscription();
     };
-  }, [monitoring]);
+  }, []);
+
+  // Stop monitoring when the app goes into background
+  useEffect(() => {
+    const listener = AppState.addEventListener(
+      "change",
+      (state) => {
+        if (state !== "active" && monitoringRef.current) {
+          stopMonitoring();
+        }
+      }
+    );
+
+    return () => listener.remove();
+  }, []);
+
+  // Reset impact records
+  function resetRecords() {
+    setImpactCount(0);
+    setLastImpact("None");
+    lastImpactTime.current = 0;
+
+    Alert.alert(
+      "Records Reset",
+      "Motion impact records have been cleared."
+    );
+  }
+
+  // Movement status color
+  function getStatusColor() {
+    if (!monitoring) return "#6B7280";
+
+    if (movement === "Sudden Impact") return "#DC2626";
+    if (movement === "High Movement") return "#EA580C";
+    if (movement === "Movement Detected") return "#D97706";
+
+    return "#16A34A";
+  }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.content}
+    >
       <Text style={styles.title}>
         📳 Motion Monitor
       </Text>
 
       <Text style={styles.description}>
-        The motion sensor monitors movement of the
-        device and can provide additional information
-        during an emergency.
+        The motion sensor monitors device movement
+        and detects sudden acceleration changes that
+        may be useful during an emergency.
       </Text>
 
       <View style={styles.statusCard}>
@@ -71,26 +283,102 @@ export default function SensorScreen() {
           CURRENT MOVEMENT
         </Text>
 
-        <Text style={styles.status}>
+        <Text
+          style={[
+            styles.status,
+            { color: getStatusColor() },
+          ]}
+        >
           {movement}
+        </Text>
+
+        <Text style={styles.monitoringText}>
+          {monitoring
+            ? "● Sensor Monitoring Active"
+            : "○ Sensor Monitoring Inactive"}
         </Text>
       </View>
 
+      {movement === "Sudden Impact" && monitoring && (
+        <View style={styles.warningCard}>
+          <Text style={styles.warningTitle}>
+            ⚠️ Sudden Impact Detected
+          </Text>
+
+          <Text style={styles.warningText}>
+            A sudden acceleration change was detected.
+            Please check your surroundings and make
+            sure you are safe.
+          </Text>
+        </View>
+      )}
+
       <View style={styles.sensorCard}>
-        <SensorValue
-          label="X AXIS"
-          value={data.x}
-        />
+        <Text style={styles.sectionTitle}>
+          Live Sensor Readings
+        </Text>
+
+        <SensorValue label="X AXIS" value={data.x} />
+        <SensorValue label="Y AXIS" value={data.y} />
+        <SensorValue label="Z AXIS" value={data.z} />
 
         <SensorValue
-          label="Y AXIS"
-          value={data.y}
+          label="MOTION CHANGE"
+          value={acceleration}
         />
+      </View>
 
-        <SensorValue
-          label="Z AXIS"
-          value={data.z}
-        />
+      <View style={styles.infoCard}>
+        <Text style={styles.sectionTitle}>
+          Motion Information
+        </Text>
+
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>
+            Sensor Status
+          </Text>
+
+          <Text
+            style={{
+              color: sensorAvailable
+                ? "#16A34A"
+                : "#DC2626",
+              fontWeight: "bold",
+            }}
+          >
+            {sensorAvailable ? "Available" : "Unavailable"}
+          </Text>
+        </View>
+
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>
+            Update Interval
+          </Text>
+
+          <Text style={styles.infoValue}>
+            100 ms
+          </Text>
+        </View>
+
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>
+            Impact Count
+          </Text>
+
+          <Text style={styles.infoValue}>
+            {impactCount}
+          </Text>
+        </View>
+
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>
+            Last Impact
+          </Text>
+
+          <Text style={styles.infoValue}>
+            {lastImpact}
+          </Text>
+        </View>
       </View>
 
       <TouchableOpacity
@@ -98,7 +386,8 @@ export default function SensorScreen() {
           styles.button,
           monitoring && styles.stopButton,
         ]}
-        onPress={() => setMonitoring(!monitoring)}
+        onPress={toggleMonitoring}
+        disabled={!sensorAvailable && !monitoring}
       >
         <Text style={styles.buttonText}>
           {monitoring
@@ -106,7 +395,22 @@ export default function SensorScreen() {
             : "Start Motion Monitoring"}
         </Text>
       </TouchableOpacity>
-    </View>
+
+      <TouchableOpacity
+        style={styles.resetButton}
+        onPress={resetRecords}
+      >
+        <Text style={styles.resetButtonText}>
+          Reset Impact Records
+        </Text>
+      </TouchableOpacity>
+
+      <Text style={styles.footer}>
+        Motion detection is for additional safety
+        information only. It cannot confirm an
+        emergency or medical fall.
+      </Text>
+    </ScrollView>
   );
 }
 
@@ -134,7 +438,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F3F4F6",
+  },
+
+  content: {
     padding: 20,
+    paddingBottom: 40,
   },
 
   title: {
@@ -164,10 +472,36 @@ const styles = StyleSheet.create({
   },
 
   status: {
-    color: "#16A34A",
     fontSize: 26,
     fontWeight: "bold",
     marginTop: 8,
+  },
+
+  monitoringText: {
+    color: "#6B7280",
+    fontSize: 12,
+    marginTop: 10,
+  },
+
+  warningCard: {
+    backgroundColor: "#FEE2E2",
+    padding: 18,
+    borderRadius: 15,
+    marginTop: 15,
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+  },
+
+  warningTitle: {
+    color: "#B91C1C",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+
+  warningText: {
+    color: "#991B1B",
+    marginTop: 8,
+    lineHeight: 20,
   },
 
   sensorCard: {
@@ -175,6 +509,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     marginTop: 15,
+  },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: 12,
   },
 
   valueBox: {
@@ -195,6 +536,28 @@ const styles = StyleSheet.create({
     color: "#111827",
   },
 
+  infoCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 15,
+  },
+
+  infoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 9,
+  },
+
+  infoLabel: {
+    color: "#6B7280",
+  },
+
+  infoValue: {
+    color: "#111827",
+    fontWeight: "bold",
+  },
+
   button: {
     backgroundColor: "#B91C1C",
     padding: 16,
@@ -210,5 +573,28 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "#FFFFFF",
     fontWeight: "bold",
+  },
+
+  resetButton: {
+    backgroundColor: "#FFFFFF",
+    padding: 15,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: "#D1D5DB",
+  },
+
+  resetButtonText: {
+    color: "#374151",
+    fontWeight: "bold",
+  },
+
+  footer: {
+    color: "#9CA3AF",
+    textAlign: "center",
+    fontSize: 12,
+    marginTop: 20,
+    lineHeight: 18,
   },
 });
