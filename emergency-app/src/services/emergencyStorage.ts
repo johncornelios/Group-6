@@ -1,8 +1,22 @@
+
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+const USER_KEY = "communityResponseUser";
 const EMERGENCY_KEY = "emergencyInformation";
 const PHOTO_KEY = "emergencyEvidence";
 const STATUS_KEY = "emergencyStatus";
+
+export async function saveUser(data: { name: string }) {
+  await AsyncStorage.setItem(
+    USER_KEY,
+    JSON.stringify(data)
+  );
+}
+
+export async function getUser(): Promise<{ name: string } | null> {
+  const data = await AsyncStorage.getItem(USER_KEY);
+  return data ? JSON.parse(data) : null;
+}
 
 export async function saveEmergencyInformation(data: any) {
   await AsyncStorage.setItem(
@@ -13,7 +27,6 @@ export async function saveEmergencyInformation(data: any) {
 
 export async function getEmergencyInformation() {
   const data = await AsyncStorage.getItem(EMERGENCY_KEY);
-
   return data ? JSON.parse(data) : null;
 }
 

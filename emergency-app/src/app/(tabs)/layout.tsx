@@ -1,54 +1,22 @@
 
 import React from "react";
-import { Tabs } from "expo-router";
+import { Stack } from "expo-router";
 
 export default function TabsLayout() {
   return (
-    <Tabs
+    <Stack
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#B91C1C",
-        tabBarInactiveTintColor: "#6B7280",
-        tabBarStyle: {
-          backgroundColor: "#FFFFFF",
+        contentStyle: {
+          backgroundColor: "#F8FAFC",
         },
       }}
     >
-      <Tabs.Screen
-        name="explore"
-        options={{
-          title: "Explore",
-          href: null,
-        }}
-      />
-
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: "Dashboard",
-        }}
-      />
-
-      <Tabs.Screen
-        name="camera"
-        options={{
-          title: "Evidence",
-        }}
-      />
-
-      <Tabs.Screen
-        name="location"
-        options={{
-          title: "Location",
-        }}
-      />
-
-      <Tabs.Screen
-        name="sensor"
-        options={{
-          title: "Sensors",
-        }}
-      />
-    </Tabs>
+      <Stack.Screen name="dashboard" />
+      <Stack.Screen name="location" />
+      <Stack.Screen name="camera" />
+      <Stack.Screen name="sensor" />
+      <Stack.Screen name="explore" />
+    </Stack>
   );
 }
