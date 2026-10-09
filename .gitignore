@@ -1,0 +1,5 @@
+.idea/
+emergency-app-backup/
+emergency-app-safe-backup/
+gitignore-old-folder/
+**/node_modules/
