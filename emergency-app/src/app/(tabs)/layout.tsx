@@ -16,7 +16,7 @@ export default function TabsLayout() {
       <Stack.Screen name="location" />
       <Stack.Screen name="camera" />
       <Stack.Screen name="sensor" />
-      <Stack.Screen name="explore" />
+      <Stack.Screen name="records" />
     </Stack>
   );
 }
