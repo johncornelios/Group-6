@@ -1,6 +1,5 @@
 
 import React, { useState } from "react";
-
 import {
   View,
   Text,
@@ -38,15 +37,11 @@ export default function HomeScreen() {
     try {
       setLoading(true);
 
-      await saveUser({
-        name: cleanName,
-      });
+      await saveUser({ name: cleanName });
 
       router.replace({
         pathname: "/(tabs)/dashboard",
-        params: {
-          username: cleanName,
-        },
+        params: { username: cleanName },
       });
     } catch (error) {
       console.error("Error saving user:", error);
@@ -76,7 +71,6 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
-          {/* App Logo */}
           <View style={styles.logoContainer}>
             <View style={styles.iconCircle}>
               <Text style={styles.icon}>🚨</Text>
@@ -90,16 +84,11 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Welcome Section */}
-          <Text style={styles.welcome}>
-            WELCOME TO
-          </Text>
+          <Text style={styles.welcome}>WELCOME TO</Text>
 
           <Text style={styles.title}>
             Community{"\n"}
-            <Text style={styles.titleRed}>
-              Response
-            </Text>
+            <Text style={styles.titleRed}>Response</Text>
           </Text>
 
           <Text style={styles.subtitle}>
@@ -107,7 +96,6 @@ export default function HomeScreen() {
             emergency information ready when you need it most.
           </Text>
 
-          {/* Safety Information */}
           <View style={styles.infoCard}>
             <View style={styles.infoIcon}>
               <Text style={styles.infoEmoji}>🛡️</Text>
@@ -117,7 +105,6 @@ export default function HomeScreen() {
               <Text style={styles.infoTitle}>
                 Your Safety Matters
               </Text>
-
               <Text style={styles.infoDescription}>
                 Keep your emergency details and trusted
                 contacts organized in one place.
@@ -125,7 +112,6 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Name Form */}
           <View style={styles.form}>
             <Text style={styles.formTitle}>
               Let's get started
@@ -135,9 +121,7 @@ export default function HomeScreen() {
               What should we call you?
             </Text>
 
-            <Text style={styles.label}>
-              FULL NAME
-            </Text>
+            <Text style={styles.label}>FULL NAME</Text>
 
             <View style={styles.inputContainer}>
               <Text style={styles.inputIcon}>👤</Text>
@@ -158,7 +142,6 @@ export default function HomeScreen() {
               />
             </View>
 
-            {/* Get Started Button */}
             <TouchableOpacity
               style={[
                 styles.button,
@@ -183,17 +166,14 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Privacy Notice */}
           <View style={styles.privacyContainer}>
             <Text style={styles.privacyIcon}>🔒</Text>
-
             <Text style={styles.disclaimer}>
-              Your emergency information is stored
+              Your saved information is stored
               locally on your device.
             </Text>
           </View>
 
-          {/* Footer */}
           <Text style={styles.footer}>
             COMMUNITY RESPONSE • SAFETY FIRST
           </Text>
@@ -208,11 +188,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
-
   scrollContent: {
     flexGrow: 1,
   },
-
   content: {
     flexGrow: 1,
     justifyContent: "center",
@@ -223,12 +201,10 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     alignSelf: "center",
   },
-
   logoContainer: {
     alignItems: "center",
     marginBottom: 24,
   },
-
   iconCircle: {
     width: 90,
     height: 90,
@@ -240,11 +216,9 @@ const styles = StyleSheet.create({
     borderColor: "#FECACA",
     marginBottom: 16,
   },
-
   icon: {
     fontSize: 43,
   },
-
   statusBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -253,7 +227,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
   },
-
   statusDot: {
     width: 7,
     height: 7,
@@ -261,14 +234,12 @@ const styles = StyleSheet.create({
     backgroundColor: "#10B981",
     marginRight: 7,
   },
-
   statusText: {
     fontSize: 10,
     fontWeight: "bold",
     color: "#047857",
     letterSpacing: 1,
   },
-
   welcome: {
     textAlign: "center",
     fontSize: 12,
@@ -277,7 +248,6 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     marginBottom: 8,
   },
-
   title: {
     fontSize: 43,
     fontWeight: "800",
@@ -285,11 +255,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 49,
   },
-
   titleRed: {
     color: "#B91C1C",
   },
-
   subtitle: {
     color: "#64748B",
     fontSize: 14,
@@ -299,7 +267,6 @@ const styles = StyleSheet.create({
     marginBottom: 26,
     paddingHorizontal: 8,
   },
-
   infoCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 18,
@@ -310,7 +277,6 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     marginBottom: 30,
   },
-
   infoIcon: {
     width: 48,
     height: 48,
@@ -320,28 +286,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 13,
   },
-
   infoEmoji: {
     fontSize: 24,
   },
-
   infoContent: {
     flex: 1,
   },
-
   infoTitle: {
     fontSize: 14,
     fontWeight: "bold",
     color: "#0F172A",
     marginBottom: 4,
   },
-
   infoDescription: {
     fontSize: 12,
     color: "#64748B",
     lineHeight: 18,
   },
-
   form: {
     backgroundColor: "#FFFFFF",
     borderRadius: 22,
@@ -350,27 +311,21 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     elevation: 2,
     shadowColor: "#000000",
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
   },
-
   formTitle: {
     fontSize: 21,
     fontWeight: "bold",
     color: "#0F172A",
   },
-
   formSubtitle: {
     fontSize: 13,
     color: "#64748B",
     marginTop: 5,
     marginBottom: 23,
   },
-
   label: {
     color: "#334155",
     fontWeight: "bold",
@@ -378,7 +333,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 9,
   },
-
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -388,12 +342,10 @@ const styles = StyleSheet.create({
     borderColor: "#CBD5E1",
     paddingHorizontal: 14,
   },
-
   inputIcon: {
     fontSize: 18,
     marginRight: 10,
   },
-
   input: {
     flex: 1,
     paddingVertical: 15,
@@ -401,7 +353,6 @@ const styles = StyleSheet.create({
     color: "#0F172A",
     minWidth: 0,
   },
-
   button: {
     backgroundColor: "#B91C1C",
     borderRadius: 12,
@@ -411,29 +362,24 @@ const styles = StyleSheet.create({
     marginTop: 18,
     minHeight: 55,
   },
-
   buttonDisabled: {
     opacity: 0.7,
   },
-
   buttonContent: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "bold",
   },
-
   arrow: {
     color: "#FFFFFF",
     fontSize: 23,
     marginLeft: 12,
   },
-
   privacyContainer: {
     flexDirection: "row",
     justifyContent: "center",
@@ -441,12 +387,10 @@ const styles = StyleSheet.create({
     marginTop: 25,
     paddingHorizontal: 15,
   },
-
   privacyIcon: {
     fontSize: 13,
     marginRight: 7,
   },
-
   disclaimer: {
     flex: 1,
     color: "#94A3B8",
@@ -454,7 +398,6 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     textAlign: "center",
   },
-
   footer: {
     textAlign: "center",
     color: "#CBD5E1",

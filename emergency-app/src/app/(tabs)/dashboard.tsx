@@ -15,28 +15,14 @@ import {
   useLocalSearchParams,
 } from "expo-router";
 
-import {
-  getUser,
-} from "../../services/emergencyStorage";
+import { getUser } from "../../services/emergencyStorage";
 
+import BackButton from "../../components/BackButton";
+import EmergencyButton from "../../components/EmergencyButton";
 import EmergencyContact from "../../components/EmergencyContact";
 import EvidenceCard from "../../components/EvidenceCard";
 import LocationCard from "../../components/LocationCard";
 import StatusCard from "../../components/StatusCard";
-
-function EmergencyButton() {
-  return (
-    <TouchableOpacity
-      style={styles.emergencyButton}
-      activeOpacity={0.9}
-      onPress={() => router.push("/(tabs)/location")}
-    >
-      <Text style={styles.emergencyButtonText}>
-        Emergency Button
-      </Text>
-    </TouchableOpacity>
-  );
-}
 
 export default function DashboardScreen() {
   const { username } = useLocalSearchParams<{
@@ -75,6 +61,9 @@ export default function DashboardScreen() {
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {/* Back Button */}
+        <BackButton toWelcome />
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerText}>
@@ -221,7 +210,7 @@ export default function DashboardScreen() {
             style={styles.quickCard}
             activeOpacity={0.8}
             onPress={() =>
-              router.push("/(tabs)/camera")
+              router.push("/(tabs)/explore" as any)
             }
           >
             <View
@@ -577,30 +566,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
     marginBottom: 18,
-  },
-
-  emergencyButton: {
-    backgroundColor: "#DC2626",
-    borderRadius: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000000",
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-
-  emergencyButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "bold",
-    letterSpacing: 0.4,
   },
 
   emergencyNotice: {

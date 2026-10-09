@@ -17,22 +17,16 @@ export default function RootLayout() {
           contentStyle: {
             backgroundColor: "#F8FAFC",
           },
-          animation: "fade",
         }}
       >
         <Stack.Screen
           name="index"
-          options={{
-            headerShown: false,
-            animation: "none",
-          }}
+          options={{ headerShown: false }}
         />
 
         <Stack.Screen
           name="(tabs)"
-          options={{
-            headerShown: false,
-          }}
+          options={{ headerShown: false }}
         />
       </Stack>
     </>
