@@ -11,7 +11,7 @@ export default function LocationCard() {
   return (
     <TouchableOpacity
       style={styles.card}
-      onPress={() => router.push("/explore")}
+      onPress={() => router.push("/(tabs)/location")}
     >
       <Text style={styles.icon}>📍</Text>
 
@@ -23,13 +23,7 @@ export default function LocationCard() {
         <Text style={styles.title}>
           Location Service
         </Text>
-
-        <Text style={styles.description}>
-          Open location tools to check your position.
-        </Text>
       </View>
-
-      <Text style={styles.arrow}>›</Text>
     </TouchableOpacity>
   );
 }
