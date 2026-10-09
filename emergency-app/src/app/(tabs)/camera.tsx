@@ -10,8 +10,11 @@ import {
   Platform,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { useRouter } from "expo-router";
 
 export default function CameraScreen() {
+  const router = useRouter();
+
   const [photo, setPhoto] = useState<string | null>(null);
   const [cameraOpen, setCameraOpen] = useState(false);
   const [error, setError] = useState("");
@@ -130,81 +133,133 @@ export default function CameraScreen() {
     stopCamera();
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Camera Screen</Text>
+  // Back button: stop camera before returning
+  const handleBack = () => {
+    stopCamera();
+    router.back();
+  };
 
-      {!cameraOpen && (
+  return (
+    <View style={styles.screen}>
+
+      {/* BACK BUTTON HEADER */}
+      <View style={styles.header}>
         <TouchableOpacity
-          style={styles.button}
-          onPress={openCamera}
+          style={styles.backButton}
+          onPress={handleBack}
         >
-          <Text style={styles.buttonText}>
-            Capture Evidence
+          <Text style={styles.backButtonText}>
+            ← Back
           </Text>
         </TouchableOpacity>
-      )}
+      </View>
 
-      {Platform.OS === "web" && cameraOpen && (
-        <View style={styles.cameraContainer}>
-          {React.createElement("video", {
-            ref: videoRef,
-            autoPlay: true,
-            playsInline: true,
-            muted: true,
-            style: {
-              width: 320,
-              maxWidth: "100%",
-              borderRadius: 10,
-              backgroundColor: "#000",
-            },
-          })}
+      {/* ORIGINAL CAMERA CONTENT */}
+      <View style={styles.container}>
+        <Text style={styles.title}>Camera Screen</Text>
 
+        {!cameraOpen && (
           <TouchableOpacity
-            style={[styles.button, { marginTop: 15 }]}
-            onPress={takePhoto}
+            style={styles.button}
+            onPress={openCamera}
           >
             <Text style={styles.buttonText}>
-              Take Photo
+              Capture Evidence
             </Text>
           </TouchableOpacity>
+        )}
 
-          <TouchableOpacity
-            style={[styles.button, styles.cancelButton]}
-            onPress={stopCamera}
-          >
-            <Text style={styles.buttonText}>
-              Cancel
+        {Platform.OS === "web" && cameraOpen && (
+          <View style={styles.cameraContainer}>
+            {React.createElement("video", {
+              ref: videoRef,
+              autoPlay: true,
+              playsInline: true,
+              muted: true,
+              style: {
+                width: 320,
+                maxWidth: "100%",
+                borderRadius: 10,
+                backgroundColor: "#000",
+              },
+            })}
+
+            <TouchableOpacity
+              style={[styles.button, { marginTop: 15 }]}
+              onPress={takePhoto}
+            >
+              <Text style={styles.buttonText}>
+                Take Photo
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.button, styles.cancelButton]}
+              onPress={stopCamera}
+            >
+              <Text style={styles.buttonText}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {!!error && (
+          <Text style={styles.errorText}>{error}</Text>
+        )}
+
+        {photo && !cameraOpen && (
+          <View style={styles.previewContainer}>
+            <Text style={styles.previewTitle}>
+              Captured Evidence
             </Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
-      {!!error && (
-        <Text style={styles.errorText}>{error}</Text>
-      )}
+            <Image
+              source={{ uri: photo }}
+              style={styles.image}
+            />
 
-      {photo && !cameraOpen && (
-        <View style={styles.previewContainer}>
-          <Text style={styles.previewTitle}>
-            Captured Evidence
-          </Text>
-
-          <Image
-            source={{ uri: photo }}
-            style={styles.image}
-          />
-
-          <Text style={styles.successText}>
-            Photo captured successfully!
-          </Text>
-        </View>
-      )}
+            <Text style={styles.successText}>
+              Photo captured successfully!
+            </Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+
+  // BACK BUTTON HEADER
+  header: {
+    width: "100%",
+    paddingTop: 15,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: "#fff",
+    alignItems: "flex-start",
+  },
+
+  backButton: {
+    backgroundColor: "#FFE2E2",
+    paddingVertical: 15,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  backButtonText: {
+    color: "#C5161D",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+
   container: {
     flex: 1,
     justifyContent: "center",
@@ -212,11 +267,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 20,
   },
+
   title: {
     fontSize: 20,
     fontWeight: "bold",
     marginBottom: 20,
   },
+
   button: {
     backgroundColor: "#007AFF",
     paddingVertical: 12,
@@ -224,38 +281,46 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: "center",
   },
+
   buttonText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
+
   cameraContainer: {
     marginTop: 20,
     alignItems: "center",
   },
+
   cancelButton: {
     backgroundColor: "#6B7280",
     marginTop: 10,
   },
+
   previewContainer: {
     marginTop: 25,
     alignItems: "center",
   },
+
   previewTitle: {
     fontSize: 18,
     fontWeight: "bold",
     marginBottom: 12,
   },
+
   image: {
     width: 280,
     height: 220,
     borderRadius: 10,
   },
+
   successText: {
     marginTop: 10,
     color: "green",
     fontSize: 14,
   },
+
   errorText: {
     marginTop: 15,
     color: "red",
