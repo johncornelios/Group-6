@@ -10,7 +10,9 @@ import {
   Platform,
   AppState,
 } from "react-native";
+
 import { Accelerometer } from "expo-sensors";
+import { useRouter } from "expo-router";
 
 type SensorData = {
   x: number;
@@ -25,10 +27,12 @@ const EMPTY_DATA: SensorData = {
 };
 
 export default function SensorScreen() {
+  const router = useRouter();
+
   const [data, setData] = useState<SensorData>(EMPTY_DATA);
   const [movement, setMovement] = useState("Not Monitoring");
   const [monitoring, setMonitoring] = useState(false);
-  const [sensorAvailable, setSensorAvailable] = useState(true);
+  const [sensorAvailable, setSensorAvailable] = useState(false);
   const [impactCount, setImpactCount] = useState(0);
   const [lastImpact, setLastImpact] = useState("None");
   const [acceleration, setAcceleration] = useState(0);
@@ -72,7 +76,7 @@ export default function SensorScreen() {
     };
   }, []);
 
-  // Remove the sensor listener
+  // Remove sensor listener
   function removeSubscription() {
     if (subscriptionRef.current) {
       subscriptionRef.current.remove();
@@ -80,7 +84,7 @@ export default function SensorScreen() {
     }
   }
 
-  // Stop monitoring completely
+  // Stop monitoring
   function stopMonitoring() {
     monitoringRef.current = false;
     startingRef.current = false;
@@ -96,7 +100,13 @@ export default function SensorScreen() {
     movementRef.current = "Not Monitoring";
   }
 
-  // Start monitoring
+  // Back button from Yamson's enhancement
+  function handleBack() {
+    stopMonitoring();
+    router.back();
+  }
+
+  // Start motion monitoring
   async function startMonitoring() {
     if (monitoringRef.current || startingRef.current) {
       return;
@@ -140,7 +150,6 @@ export default function SensorScreen() {
       setSensorAvailable(true);
 
       const subscription = Accelerometer.addListener((value) => {
-        // Prevent updates after monitoring stops
         if (!monitoringRef.current) return;
 
         setData({
@@ -181,7 +190,7 @@ export default function SensorScreen() {
           setMovement(newMovement);
         }
 
-        // Count sudden impacts with a 3-second cooldown
+        // Count impacts with a 3-second cooldown
         const now = Date.now();
 
         if (
@@ -208,7 +217,7 @@ export default function SensorScreen() {
     }
   }
 
-  // Toggle monitoring on and off
+  // Toggle monitoring
   function toggleMonitoring() {
     if (monitoringRef.current || startingRef.current) {
       stopMonitoring();
@@ -217,7 +226,7 @@ export default function SensorScreen() {
     }
   }
 
-  // Stop monitoring when the screen is removed
+  // Remove listener when screen unmounts
   useEffect(() => {
     return () => {
       monitoringRef.current = false;
@@ -226,7 +235,7 @@ export default function SensorScreen() {
     };
   }, []);
 
-  // Stop monitoring when the app goes into background
+  // Stop monitoring when app enters background
   useEffect(() => {
     const listener = AppState.addEventListener(
       "change",
@@ -264,153 +273,167 @@ export default function SensorScreen() {
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
-      <Text style={styles.title}>
-        📳 Motion Monitor
-      </Text>
-
-      <Text style={styles.description}>
-        The motion sensor monitors device movement
-        and detects sudden acceleration changes that
-        may be useful during an emergency.
-      </Text>
-
-      <View style={styles.statusCard}>
-        <Text style={styles.statusLabel}>
-          CURRENT MOVEMENT
-        </Text>
-
-        <Text
-          style={[
-            styles.status,
-            { color: getStatusColor() },
-          ]}
+    <View style={styles.screen}>
+      {/* Back Button Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={handleBack}
         >
-          {movement}
-        </Text>
-
-        <Text style={styles.monitoringText}>
-          {monitoring
-            ? "● Sensor Monitoring Active"
-            : "○ Sensor Monitoring Inactive"}
-        </Text>
+          <Text style={styles.backButtonText}>
+            ← Back
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {movement === "Sudden Impact" && monitoring && (
-        <View style={styles.warningCard}>
-          <Text style={styles.warningTitle}>
-            ⚠️ Sudden Impact Detected
-          </Text>
-
-          <Text style={styles.warningText}>
-            A sudden acceleration change was detected.
-            Please check your surroundings and make
-            sure you are safe.
-          </Text>
-        </View>
-      )}
-
-      <View style={styles.sensorCard}>
-        <Text style={styles.sectionTitle}>
-          Live Sensor Readings
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
+        <Text style={styles.title}>
+          📳 Motion Monitor
         </Text>
 
-        <SensorValue label="X AXIS" value={data.x} />
-        <SensorValue label="Y AXIS" value={data.y} />
-        <SensorValue label="Z AXIS" value={data.z} />
-
-        <SensorValue
-          label="MOTION CHANGE"
-          value={acceleration}
-        />
-      </View>
-
-      <View style={styles.infoCard}>
-        <Text style={styles.sectionTitle}>
-          Motion Information
+        <Text style={styles.description}>
+          The motion sensor monitors device movement
+          and detects sudden acceleration changes that
+          may be useful during an emergency.
         </Text>
 
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>
-            Sensor Status
+        <View style={styles.statusCard}>
+          <Text style={styles.statusLabel}>
+            CURRENT MOVEMENT
           </Text>
 
           <Text
-            style={{
-              color: sensorAvailable
-                ? "#16A34A"
-                : "#DC2626",
-              fontWeight: "bold",
-            }}
+            style={[
+              styles.status,
+              { color: getStatusColor() },
+            ]}
           >
-            {sensorAvailable ? "Available" : "Unavailable"}
+            {movement}
+          </Text>
+
+          <Text style={styles.monitoringText}>
+            {monitoring
+              ? "● Sensor Monitoring Active"
+              : "○ Sensor Monitoring Inactive"}
           </Text>
         </View>
 
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>
-            Update Interval
+        {movement === "Sudden Impact" && monitoring && (
+          <View style={styles.warningCard}>
+            <Text style={styles.warningTitle}>
+              ⚠️ Sudden Impact Detected
+            </Text>
+
+            <Text style={styles.warningText}>
+              A sudden acceleration change was detected.
+              Please check your surroundings and make
+              sure you are safe.
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.sensorCard}>
+          <Text style={styles.sectionTitle}>
+            Live Sensor Readings
           </Text>
 
-          <Text style={styles.infoValue}>
-            100 ms
-          </Text>
+          <SensorValue label="X AXIS" value={data.x} />
+          <SensorValue label="Y AXIS" value={data.y} />
+          <SensorValue label="Z AXIS" value={data.z} />
+
+          <SensorValue
+            label="MOTION CHANGE"
+            value={acceleration}
+          />
         </View>
 
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>
-            Impact Count
+        <View style={styles.infoCard}>
+          <Text style={styles.sectionTitle}>
+            Motion Information
           </Text>
 
-          <Text style={styles.infoValue}>
-            {impactCount}
-          </Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>
+              Sensor Status
+            </Text>
+
+            <Text
+              style={{
+                color: sensorAvailable
+                  ? "#16A34A"
+                  : "#DC2626",
+                fontWeight: "bold",
+              }}
+            >
+              {sensorAvailable ? "Available" : "Unavailable"}
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>
+              Update Interval
+            </Text>
+
+            <Text style={styles.infoValue}>
+              100 ms
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>
+              Impact Count
+            </Text>
+
+            <Text style={styles.infoValue}>
+              {impactCount}
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>
+              Last Impact
+            </Text>
+
+            <Text style={styles.infoValue}>
+              {lastImpact}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>
-            Last Impact
+        <TouchableOpacity
+          style={[
+            styles.button,
+            monitoring && styles.stopButton,
+          ]}
+          onPress={toggleMonitoring}
+          disabled={!sensorAvailable && !monitoring}
+        >
+          <Text style={styles.buttonText}>
+            {monitoring
+              ? "Stop Monitoring"
+              : "Start Motion Monitoring"}
           </Text>
+        </TouchableOpacity>
 
-          <Text style={styles.infoValue}>
-            {lastImpact}
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={resetRecords}
+        >
+          <Text style={styles.resetButtonText}>
+            Reset Impact Records
           </Text>
-        </View>
-      </View>
+        </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[
-          styles.button,
-          monitoring && styles.stopButton,
-        ]}
-        onPress={toggleMonitoring}
-        disabled={!sensorAvailable && !monitoring}
-      >
-        <Text style={styles.buttonText}>
-          {monitoring
-            ? "Stop Monitoring"
-            : "Start Motion Monitoring"}
+        <Text style={styles.footer}>
+          Motion detection is for additional safety
+          information only. It cannot confirm an
+          emergency or medical fall.
         </Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={styles.resetButton}
-        onPress={resetRecords}
-      >
-        <Text style={styles.resetButtonText}>
-          Reset Impact Records
-        </Text>
-      </TouchableOpacity>
-
-      <Text style={styles.footer}>
-        Motion detection is for additional safety
-        information only. It cannot confirm an
-        emergency or medical fall.
-      </Text>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -435,6 +458,35 @@ function SensorValue({
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+  },
+
+  header: {
+    width: "100%",
+    paddingTop: 15,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: "#F3F4F6",
+    alignItems: "flex-start",
+  },
+
+  backButton: {
+    backgroundColor: "#FFE2E2",
+    paddingVertical: 15,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  backButtonText: {
+    color: "#C5161D",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+
   container: {
     flex: 1,
     backgroundColor: "#F3F4F6",

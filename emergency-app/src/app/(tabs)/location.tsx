@@ -11,8 +11,11 @@ import {
   Linking,
 } from "react-native";
 import * as Location from "expo-location";
+import { useRouter } from "expo-router";
 
 export default function LocationScreen() {
+  const router = useRouter();
+
   const [location, setLocation] =
     useState<Location.LocationObject | null>(null);
 
@@ -106,107 +109,158 @@ export default function LocationScreen() {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-    >
-      <Text style={styles.icon}>📍</Text>
+    <View style={styles.screen}>
 
-      <Text style={styles.title}>
-        GPS Location
-      </Text>
-
-      <Text style={styles.subtitle}>
-        Automatically detecting your current location
-      </Text>
-
-      {loading ? (
-        <View style={styles.card}>
-          <ActivityIndicator
-            size="large"
-            color="#B91C1C"
-          />
-
-          <Text style={styles.loadingText}>
-            Getting your GPS location...
+      {/* BACK BUTTON HEADER */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>
+            ← Back
           </Text>
-        </View>
-      ) : error ? (
-        <View style={styles.card}>
-          <Text style={styles.errorText}>
-            {error}
-          </Text>
-        </View>
-      ) : location ? (
-        <View style={styles.card}>
-          <Text style={styles.successText}>
-            ✓ Location Detected
-          </Text>
+        </TouchableOpacity>
+      </View>
 
-          <Text style={styles.label}>
-            LATITUDE
-          </Text>
+      {/* GPS LOCATION CONTENT */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.container}
+      >
+        <Text style={styles.icon}>📍</Text>
 
-          <Text style={styles.value}>
-            {location.coords.latitude.toFixed(6)}
-          </Text>
-
-          <Text style={styles.label}>
-            LONGITUDE
-          </Text>
-
-          <Text style={styles.value}>
-            {location.coords.longitude.toFixed(6)}
-          </Text>
-
-          <Text style={styles.label}>
-            GPS ACCURACY
-          </Text>
-
-          <Text style={styles.value}>
-            {location.coords.accuracy != null
-              ? `± ${location.coords.accuracy.toFixed(1)} meters`
-              : "Unavailable"}
-          </Text>
-
-          <Text style={styles.label}>
-            APPROXIMATE ADDRESS
-          </Text>
-
-          <Text style={styles.address}>
-            {address}
-          </Text>
-
-          <TouchableOpacity
-            style={styles.mapButton}
-            onPress={openMap}
-          >
-            <Text style={styles.buttonText}>
-              🗺️ View on Map
-            </Text>
-          </TouchableOpacity>
-        </View>
-      ) : null}
-
-      <TouchableOpacity
-        style={styles.refreshButton}
-        onPress={getLocation}
-        disabled={loading}
->
-        <Text style={styles.buttonText}>
-          🔄 Refresh GPS Location
+        <Text style={styles.title}>
+          GPS Location
         </Text>
-      </TouchableOpacity>
 
-      <Text style={styles.note}>
-        Your location is accessed only after you
-        grant permission. GPS accuracy depends
-        on your device and surroundings.
-      </Text>
-    </ScrollView>
+        <Text style={styles.subtitle}>
+          Automatically detecting your current location
+        </Text>
+
+        {loading ? (
+          <View style={styles.card}>
+            <ActivityIndicator
+              size="large"
+              color="#B91C1C"
+            />
+
+            <Text style={styles.loadingText}>
+              Getting your GPS location...
+            </Text>
+          </View>
+        ) : error ? (
+          <View style={styles.card}>
+            <Text style={styles.errorText}>
+              {error}
+            </Text>
+          </View>
+        ) : location ? (
+          <View style={styles.card}>
+            <Text style={styles.successText}>
+              ✓ Location Detected
+            </Text>
+
+            <Text style={styles.label}>
+              LATITUDE
+            </Text>
+
+            <Text style={styles.value}>
+              {location.coords.latitude.toFixed(6)}
+            </Text>
+
+            <Text style={styles.label}>
+              LONGITUDE
+            </Text>
+
+            <Text style={styles.value}>
+              {location.coords.longitude.toFixed(6)}
+            </Text>
+
+            <Text style={styles.label}>
+              GPS ACCURACY
+            </Text>
+
+            <Text style={styles.value}>
+              {location.coords.accuracy != null
+                ? `± ${location.coords.accuracy.toFixed(1)} meters`
+                : "Unavailable"}
+            </Text>
+
+            <Text style={styles.label}>
+              APPROXIMATE ADDRESS
+            </Text>
+
+            <Text style={styles.address}>
+              {address}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.mapButton}
+              onPress={openMap}
+            >
+              <Text style={styles.buttonText}>
+                🗺️ View on Map
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={getLocation}
+          disabled={loading}
+        >
+          <Text style={styles.buttonText}>
+            🔄 Refresh GPS Location
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={styles.note}>
+          Your location is accessed only after you
+          grant permission. GPS accuracy depends
+          on your device and surroundings.
+        </Text>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+  },
+
+  // BACK BUTTON HEADER
+  header: {
+    width: "100%",
+    paddingTop: 15,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    backgroundColor: "#F3F4F6",
+    alignItems: "flex-start",
+  },
+
+  backButton: {
+    backgroundColor: "#FFE2E2",
+    paddingVertical: 15,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  backButtonText: {
+    color: "#C5161D",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+
+  scrollView: {
+    flex: 1,
+  },
+
   container: {
     flexGrow: 1,
     backgroundColor: "#F3F4F6",
