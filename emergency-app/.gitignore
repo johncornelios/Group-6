@@ -41,3 +41,7 @@ example
 # generated native folders
 /ios
 /android
+
+.idea/
+emergency-app-backup/
+**/node_modules/
