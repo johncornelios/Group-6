@@ -205,12 +205,12 @@ export default function DashboardScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* Explore */}
+          {/* Incident Records - Updated Explore */}
           <TouchableOpacity
             style={styles.quickCard}
             activeOpacity={0.8}
-            onPress={() =>
-              router.push("/(tabs)/explore" as any)
+            onPress={(): void =>
+              router.push("/(tabs)/records" as any)
             }
           >
             <View
@@ -220,16 +220,16 @@ export default function DashboardScreen() {
               ]}
             >
               <Text style={styles.quickEmoji}>
-                🧭
+                📁
               </Text>
             </View>
 
             <Text style={styles.quickTitle}>
-              Explore
+              Incident Records
             </Text>
 
             <Text style={styles.quickDescription}>
-              Browse available features
+              View saved evidence and incident details
             </Text>
           </TouchableOpacity>
         </View>
