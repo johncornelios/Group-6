@@ -1,641 +1,588 @@
-
-import React, { useCallback, useState } from "react";
-
+import React, { useCallback, useRef, useState } from "react";
 import {
-  View,
-  Text,
-  Image,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  Alert,
-  Modal,
   ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
   Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-
-import { router, useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
 import {
-  type Incident,
-  getIncidents,
-  deleteIncident,
-} from "../../services/IncidentStorage";
+  getEvidenceRecords,
+  deleteEvidence,
+  type EvidenceRecord,
+} from "../../services/emergencyStorage";
+
+function formatDate(timestamp: string | null) {
+  if (!timestamp) return "Capture time unavailable";
+
+  const date = new Date(timestamp);
+
+  return Number.isNaN(date.getTime())
+    ? "Capture time unavailable"
+    : date.toLocaleString();
+}
 
 export default function RecordsScreen() {
-  const [records, setRecords] = useState<Incident[]>([]);
+  const router = useRouter();
+
+  const [records, setRecords] = useState<EvidenceRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selected, setSelected] = useState<Incident | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState<EvidenceRecord | null>(null);
 
-  const loadRecords = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await getIncidents();
-      setRecords(data);
-    } catch (error) {
-      console.error("Unable to load records:", error);
-
-      if (Platform.OS === "web") {
-        window.alert("Unable to load incident records.");
-      } else {
-        Alert.alert("Error", "Unable to load incident records.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const activeRef = useRef(false);
+  const operationRef = useRef(false);
+  const loadIdRef = useRef(0);
 
   useFocusEffect(
     useCallback(() => {
-      loadRecords();
-    }, [loadRecords])
+      activeRef.current = true;
+      const loadId = ++loadIdRef.current;
+
+      async function loadRecords() {
+        setLoading(true);
+        setError("");
+
+        try {
+          const savedRecords = await getEvidenceRecords();
+
+          if (
+            activeRef.current &&
+            loadIdRef.current === loadId
+          ) {
+            setRecords(savedRecords);
+          }
+        } catch {
+          if (
+            activeRef.current &&
+            loadIdRef.current === loadId
+          ) {
+            setError(
+              "Unable to load saved evidence. Please try again."
+            );
+          }
+        } finally {
+          if (
+            activeRef.current &&
+            loadIdRef.current === loadId
+          ) {
+            setLoading(false);
+          }
+        }
+      }
+
+      void loadRecords();
+
+      return () => {
+        activeRef.current = false;
+        loadIdRef.current += 1;
+      };
+    }, [])
   );
 
-  function formatDate(date: string) {
-    return new Date(date).toLocaleDateString("en-PH", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  }
+  const refreshRecords = async () => {
+    if (operationRef.current || loading) return;
 
-  function formatTime(date: string) {
-    return new Date(date).toLocaleTimeString("en-PH", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  }
+    operationRef.current = true;
+    const loadId = ++loadIdRef.current;
 
-  async function removeRecord(id: string) {
-    if (deleting) return;
+    setRefreshing(true);
+    setError("");
 
     try {
-      setDeleting(true);
+      const savedRecords = await getEvidenceRecords();
 
-      await deleteIncident(id);
-      setSelected(null);
-      await loadRecords();
-
-      if (Platform.OS === "web") {
-        window.alert("Incident record deleted successfully.");
-      } else {
-        Alert.alert(
-          "Deleted",
-          "Incident record deleted successfully."
+      if (
+        activeRef.current &&
+        loadIdRef.current === loadId
+      ) {
+        setRecords(savedRecords);
+      }
+    } catch {
+      if (
+        activeRef.current &&
+        loadIdRef.current === loadId
+      ) {
+        setError(
+          "Unable to refresh saved evidence. Please try again."
         );
       }
-    } catch (error) {
-      console.error("Delete error:", error);
+    } finally {
+      operationRef.current = false;
 
-      if (Platform.OS === "web") {
-        window.alert("Unable to delete the record.");
-      } else {
-        Alert.alert("Error", "Unable to delete the record.");
+      if (activeRef.current) {
+        setRefreshing(false);
+      }
+    }
+  };
+
+  const removeEvidence = async (record: EvidenceRecord) => {
+    if (operationRef.current || !activeRef.current) return;
+
+    operationRef.current = true;
+    loadIdRef.current += 1;
+
+    setDeletingId(record.id);
+    setError("");
+
+    try {
+      await deleteEvidence(record.id);
+
+      if (activeRef.current) {
+        setRecords((current) =>
+          current.filter((item) => item.id !== record.id)
+        );
+
+        setSelected((current) =>
+          current?.id === record.id ? null : current
+        );
+      }
+    } catch {
+      if (activeRef.current) {
+        setError("Unable to delete evidence. Please try again.");
       }
     } finally {
-      setDeleting(false);
-    }
-  }
+      operationRef.current = false;
 
-  function confirmDelete(id: string) {
-    if (Platform.OS === "web") {
-      if (window.confirm("Delete this incident record?")) {
-        removeRecord(id);
+      if (activeRef.current) {
+        setDeletingId(null);
       }
+    }
+  };
+
+  const confirmDelete = (record: EvidenceRecord) => {
+    if (operationRef.current || loading) return;
+
+    if (Platform.OS === "web") {
+      const confirmed = window.confirm(
+        "Delete this evidence? This cannot be undone."
+      );
+
+      if (confirmed) {
+        void removeEvidence(record);
+      }
+
       return;
     }
 
     Alert.alert(
-      "Delete Record",
-      "Are you sure you want to delete this incident?",
+      "Delete Evidence",
+      "Delete this evidence? This cannot be undone.",
       [
-        { text: "Cancel", style: "cancel" },
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => removeRecord(id),
+          onPress: () => void removeEvidence(record),
         },
       ]
     );
-  }
+  };
+
+  const busy = refreshing || deletingId !== null;
+
+  const handleBack = () => {
+    if (operationRef.current) return;
+
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/(tabs)/dashboard");
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Back Button */}
+    <View style={styles.screen}>
+      <View style={styles.header}>
         <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.replace("/(tabs)/dashboard")}
+          style={[
+            styles.backButton,
+            busy && styles.disabledButton,
+          ]}
+          onPress={handleBack}
+          disabled={busy}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
         >
-          <Text style={styles.backText}>
-            ← Back to Dashboard
-          </Text>
+          <Text style={styles.backButtonText}>← Back</Text>
         </TouchableOpacity>
+      </View>
 
-        {/* Header */}
-        <Text style={styles.smallTitle}>
-          COMMUNITY RESPONSE
-        </Text>
-
-        <Text style={styles.title}>
-          📁 Incident Records
-        </Text>
+      <View style={styles.heading}>
+        <Text style={styles.title}>📁 Incident Records</Text>
 
         <Text style={styles.subtitle}>
           Review your saved emergency evidence
         </Text>
 
-        {/* Summary */}
-        <View style={styles.summaryCard}>
-          <Text style={styles.summaryNumber}>
-            {records.length}
+        {!loading && (
+          <Text style={styles.countText}>
+            {records.length} saved{" "}
+            {records.length === 1 ? "photo" : "photos"}
           </Text>
+        )}
 
-          <View>
-            <Text style={styles.summaryTitle}>
-              Saved Incidents
-            </Text>
+        <TouchableOpacity
+          style={[
+            styles.refreshButton,
+            (loading || busy) && styles.disabledButton,
+          ]}
+          onPress={refreshRecords}
+          disabled={loading || busy}
+          accessibilityRole="button"
+          accessibilityState={{
+            disabled: loading || busy,
+            busy: refreshing,
+          }}
+        >
+          <Text style={styles.buttonText}>
+            {refreshing ? "Refreshing..." : "↻ Refresh Records"}
+          </Text>
+        </TouchableOpacity>
 
-            <Text style={styles.summaryDescription}>
-              Stored on this device
-            </Text>
-          </View>
+        {!!error && (
+          <Text style={styles.errorText}>{error}</Text>
+        )}
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#B91C1C" />
+
+          <Text style={styles.subtitle}>
+            Loading saved evidence...
+          </Text>
         </View>
-
-        {/* Records */}
-        {loading ? (
-          <ActivityIndicator
-            size="large"
-            color="#B91C1C"
-            style={styles.loader}
-          />
-        ) : records.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyEmoji}>📂</Text>
-
-            <Text style={styles.emptyTitle}>
-              No Incident Records Yet
-            </Text>
-
-            <Text style={styles.emptyDescription}>
-              Capture emergency evidence to create
-              your first incident record.
-            </Text>
-
-            <TouchableOpacity
-              style={styles.captureButton}
-              onPress={() => router.push("/(tabs)/camera")}
-            >
-              <Text style={styles.captureText}>
-                📷 Capture Evidence
+      ) : (
+        <FlatList
+          data={records}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={refreshRecords}
+              enabled={!busy}
+              tintColor="#B91C1C"
+              colors={["#B91C1C"]}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyTitle}>
+                {error
+                  ? "Records unavailable"
+                  : "No saved evidence yet"}
               </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          records.map((incident, index) => (
-            <View
-              key={incident.id}
-              style={styles.recordCard}
-            >
-              {/* Record Header */}
-              <View style={styles.recordHeader}>
-                <Text style={styles.recordTitle}>
-                  Incident #
-                  {String(
-                    records.length - index
-                  ).padStart(3, "0")}
-                </Text>
 
-                <View style={styles.savedBadge}>
-                  <Text style={styles.savedText}>
-                    SAVED
-                  </Text>
-                </View>
-              </View>
+              <Text style={styles.subtitle}>
+                {error
+                  ? "Tap Refresh Records to try again."
+                  : "Capture a photo on the Camera page. Successfully saved photos will appear here."}
+              </Text>
+            </View>
+          }
+          renderItem={({ item, index }) => (
+            <View style={styles.card}>
+              <Text style={styles.recordTitle}>
+                Evidence #
+                {String(records.length - index).padStart(3, "0")}
+              </Text>
 
-              {/* Evidence Photo */}
+              <Text style={styles.recordId}>
+                ID: {item.id}
+              </Text>
+
               <Image
-                source={{ uri: incident.photoUri }}
-                style={styles.recordImage}
-                resizeMode="cover"
+                source={{ uri: item.uri }}
+                style={styles.thumbnail}
+                resizeMode="contain"
+                accessibilityLabel="Saved emergency evidence"
               />
 
-              {/* Date */}
-              <View style={styles.detailRow}>
-                <Text style={styles.detailIcon}>📅</Text>
+              <Text style={styles.label}>CAPTURE TIME</Text>
 
-                <Text style={styles.detailText}>
-                  {formatDate(incident.date)}
-                </Text>
-              </View>
+              <Text style={styles.date}>
+                {formatDate(item.capturedAt)}
+              </Text>
 
-              {/* Time */}
-              <View style={styles.detailRow}>
-                <Text style={styles.detailIcon}>🕒</Text>
-
-                <Text style={styles.detailText}>
-                  {formatTime(incident.date)}
-                </Text>
-              </View>
-
-              {/* Location */}
-              <View style={styles.detailRow}>
-                <Text style={styles.detailIcon}>📍</Text>
-
-                <Text style={styles.detailText}>
-                  {incident.locationName ||
-                    "Location unavailable"}
-                </Text>
-              </View>
-
-              {/* Description */}
-              <View style={styles.detailRow}>
-                <Text style={styles.detailIcon}>📝</Text>
-
-                <Text style={styles.detailText}>
-                  {incident.description}
-                </Text>
-              </View>
-
-              {/* View Evidence */}
               <TouchableOpacity
                 style={styles.viewButton}
-                onPress={() => setSelected(incident)}
+                onPress={() => setSelected(item)}
+                accessibilityRole="button"
               >
-                <Text style={styles.viewText}>
-                  👁️ View Evidence
+                <Text style={styles.buttonText}>
+                  View Evidence
                 </Text>
               </TouchableOpacity>
 
-              {/* Delete Record */}
               <TouchableOpacity
-                style={styles.deleteButton}
-                disabled={deleting}
-                onPress={() => confirmDelete(incident.id)}
+                style={[
+                  styles.deleteButton,
+                  busy && styles.disabledButton,
+                ]}
+                onPress={() => confirmDelete(item)}
+                disabled={busy}
+                accessibilityRole="button"
+                accessibilityLabel="Delete this evidence"
+                accessibilityState={{ disabled: busy }}
               >
-                <Text style={styles.deleteText}>
-                  🗑️ Delete Record
+                <Text style={styles.deleteButtonText}>
+                  {deletingId === item.id
+                    ? "Deleting..."
+                    : "Delete Evidence"}
                 </Text>
               </TouchableOpacity>
             </View>
-          ))
-        )}
-      </ScrollView>
+          )}
+        />
+      )}
 
-      {/* Full Evidence Preview */}
       <Modal
         visible={selected !== null}
-        animationType="slide"
+        animationType="fade"
         onRequestClose={() => setSelected(null)}
       >
-        <ScrollView
-          style={styles.modalContainer}
-          contentContainerStyle={styles.modalContent}
-        >
+        <View style={styles.modalContainer}>
           <TouchableOpacity
-            style={styles.backButton}
+            style={styles.closeButton}
             onPress={() => setSelected(null)}
+            accessibilityRole="button"
           >
-            <Text style={styles.backText}>
-              ← Back to Records
+            <Text style={styles.buttonText}>
+              ← Close Preview
             </Text>
           </TouchableOpacity>
 
           {selected && (
             <>
-              <Text style={styles.modalTitle}>
-                Incident Evidence
-              </Text>
-
               <Image
-                source={{ uri: selected.photoUri }}
+                source={{ uri: selected.uri }}
                 style={styles.fullImage}
                 resizeMode="contain"
+                accessibilityLabel="Full saved evidence preview"
               />
 
-              <View style={styles.modalDetails}>
-                <Text style={styles.modalLabel}>
-                  DATE
-                </Text>
-
-                <Text style={styles.modalValue}>
-                  {formatDate(selected.date)}
-                </Text>
-
-                <Text style={styles.modalLabel}>
-                  TIME
-                </Text>
-
-                <Text style={styles.modalValue}>
-                  {formatTime(selected.date)}
-                </Text>
-
-                <Text style={styles.modalLabel}>
-                  LOCATION
-                </Text>
-
-                <Text style={styles.modalValue}>
-                  {selected.locationName ||
-                    "Location unavailable"}
-                </Text>
-
-                {selected.latitude != null &&
-                  selected.longitude != null && (
-                    <Text style={styles.coordinates}>
-                      GPS: {selected.latitude.toFixed(6)},{" "}
-                      {selected.longitude.toFixed(6)}
-                    </Text>
-                  )}
-
-                <Text style={styles.modalLabel}>
-                  INCIDENT DESCRIPTION
-                </Text>
-
-                <Text style={styles.modalValue}>
-                  {selected.description}
-                </Text>
-              </View>
+              <Text style={styles.previewDate}>
+                {formatDate(selected.capturedAt)}
+              </Text>
             </>
           )}
-        </ScrollView>
+        </View>
       </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#F3F4F6",
   },
 
-  content: {
-    padding: 20,
-    paddingTop: 30,
-    paddingBottom: 50,
-    width: "100%",
-    maxWidth: 600,
-    alignSelf: "center",
+  header: {
+    paddingTop: 15,
+    paddingBottom: 10,
+    paddingHorizontal: 20,
+    alignItems: "flex-start",
   },
 
   backButton: {
-    alignSelf: "flex-start",
-    backgroundColor: "#FEE2E2",
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    backgroundColor: "#FFE2E2",
+    paddingVertical: 15,
+    paddingHorizontal: 18,
     borderRadius: 12,
-    marginBottom: 22,
   },
 
-  backText: {
-    color: "#B91C1C",
+  backButtonText: {
+    color: "#C5161D",
     fontSize: 14,
     fontWeight: "bold",
   },
 
-  smallTitle: {
-    color: "#B91C1C",
-    fontSize: 11,
-    fontWeight: "bold",
-    letterSpacing: 1.2,
+  heading: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 15,
+    alignItems: "center",
   },
 
   title: {
     fontSize: 25,
     fontWeight: "bold",
-    color: "#0F172A",
-    marginTop: 10,
+    color: "#111827",
+    textAlign: "center",
   },
 
   subtitle: {
-    color: "#64748B",
-    fontSize: 13,
-    marginTop: 8,
-    marginBottom: 24,
-  },
-
-  summaryCard: {
-    backgroundColor: "#FEE2E2",
-    borderRadius: 16,
-    padding: 20,
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 24,
-  },
-
-  summaryNumber: {
-    fontSize: 38,
-    fontWeight: "bold",
-    color: "#B91C1C",
-    marginRight: 18,
-  },
-
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#991B1B",
-  },
-
-  summaryDescription: {
-    fontSize: 12,
-    color: "#7F1D1D",
-    marginTop: 4,
-  },
-
-  loader: {
-    marginTop: 40,
-  },
-
-  emptyCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 30,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 15,
-  },
-
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#0F172A",
-    textAlign: "center",
-  },
-
-  emptyDescription: {
-    fontSize: 13,
-    color: "#64748B",
-    textAlign: "center",
-    lineHeight: 21,
-    marginTop: 10,
-    marginBottom: 20,
-  },
-
-  captureButton: {
-    backgroundColor: "#B91C1C",
-    paddingHorizontal: 22,
-    paddingVertical: 15,
-    borderRadius: 12,
-  },
-
-  captureText: {
-    color: "#FFFFFF",
-    fontWeight: "bold",
+    color: "#6B7280",
     fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+    marginTop: 10,
   },
 
-  recordCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginBottom: 20,
+  countText: {
+    color: "#374151",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 10,
   },
 
-  recordHeader: {
-    flexDirection: "row",
+  refreshButton: {
+    backgroundColor: "#B91C1C",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    marginTop: 15,
+  },
+
+  disabledButton: {
+    opacity: 0.5,
+  },
+
+  buttonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+
+  loadingContainer: {
+    flex: 1,
     alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 15,
+    justifyContent: "center",
+  },
+
+  listContent: {
+    flexGrow: 1,
+    paddingHorizontal: 20,
+    paddingBottom: 30,
+  },
+
+  card: {
+    backgroundColor: "#FFFFFF",
+    padding: 18,
+    borderRadius: 15,
+    marginBottom: 18,
+    width: "100%",
+    maxWidth: 560,
+    alignSelf: "center",
   },
 
   recordTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: "bold",
-    color: "#0F172A",
+    color: "#111827",
   },
 
-  savedBadge: {
-    backgroundColor: "#DCFCE7",
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 20,
+  recordId: {
+    fontSize: 11,
+    color: "#6B7280",
+    marginTop: 5,
+    marginBottom: 12,
   },
 
-  savedText: {
-    fontSize: 10,
-    fontWeight: "bold",
-    color: "#15803D",
-  },
-
-  recordImage: {
+  thumbnail: {
     width: "100%",
     height: 220,
-    borderRadius: 12,
-    backgroundColor: "#F1F5F9",
-    marginBottom: 18,
+    borderRadius: 10,
+    backgroundColor: "#E5E7EB",
   },
 
-  detailRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: 14,
+  label: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#6B7280",
+    marginTop: 15,
   },
 
-  detailIcon: {
-    fontSize: 17,
-    marginRight: 12,
-  },
-
-  detailText: {
-    flex: 1,
-    color: "#334155",
-    fontSize: 13,
-    lineHeight: 20,
+  date: {
+    color: "#111827",
+    fontSize: 14,
+    marginTop: 5,
   },
 
   viewButton: {
     backgroundColor: "#B91C1C",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
-    marginBottom: 10,
-  },
-
-  viewText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "bold",
+    padding: 14,
+    borderRadius: 10,
+    marginTop: 18,
   },
 
   deleteButton: {
-    backgroundColor: "#FEF2F2",
-    borderRadius: 12,
-    padding: 15,
-    alignItems: "center",
+    backgroundColor: "#FEE2E2",
+    padding: 14,
+    borderRadius: 10,
+    marginTop: 10,
   },
 
-  deleteText: {
+  deleteButtonText: {
     color: "#B91C1C",
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "bold",
+    textAlign: "center",
+  },
+
+  emptyCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 25,
+    borderRadius: 15,
+    width: "100%",
+    maxWidth: 560,
+    alignSelf: "center",
+    marginTop: 20,
+  },
+
+  emptyTitle: {
+    color: "#111827",
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+
+  errorText: {
+    color: "#DC2626",
+    textAlign: "center",
+    marginTop: 12,
   },
 
   modalContainer: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-
-  modalContent: {
+    backgroundColor: "#111827",
     padding: 20,
-    paddingTop: 40,
-    paddingBottom: 50,
-    width: "100%",
-    maxWidth: 600,
-    alignSelf: "center",
+    paddingTop: 50,
   },
 
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#0F172A",
-    marginBottom: 20,
+  closeButton: {
+    backgroundColor: "#B91C1C",
+    padding: 14,
+    borderRadius: 10,
+    alignSelf: "flex-start",
   },
 
   fullImage: {
+    flex: 1,
     width: "100%",
-    height: 350,
-    backgroundColor: "#0F172A",
-    borderRadius: 14,
-  },
-
-  modalDetails: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 20,
     marginTop: 20,
   },
 
-  modalLabel: {
-    fontSize: 11,
-    fontWeight: "bold",
-    color: "#B91C1C",
-    letterSpacing: 1,
-    marginTop: 15,
-    marginBottom: 7,
-  },
-
-  modalValue: {
-    fontSize: 14,
-    color: "#334155",
-    lineHeight: 22,
-  },
-
-  coordinates: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 7,
+  previewDate: {
+    color: "#FFFFFF",
+    textAlign: "center",
+    paddingVertical: 20,
   },
 });
